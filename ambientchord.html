@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambient Chord Progression Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #581c87 50%, #0f172a 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #e9d5ff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(30, 27, 75, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e9d5ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: rgba(233, 213, 255, 0.7);
+            margin-bottom: 1.5rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #9333ea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #7e22ce;
+        }
+
+        .btn-secondary {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #15803d;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #e9d5ff;
+            margin-bottom: 0.5rem;
+        }
+
+        select, input[type="range"] {
+            padding: 0.5rem 1rem;
+            background: #334155;
+            color: #e9d5ff;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #a855f7;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            cursor: pointer;
+            accent-color: #9333ea;
+        }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: rgba(233, 213, 255, 0.6);
+            margin-top: 0.25rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding-top: 1rem;
+        }
+
+        input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #9333ea;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .progression-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .chord-item {
+            padding: 1rem;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chord-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .chord-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e9d5ff;
+        }
+
+        .chord-notes {
+            color: #d8b4fe;
+        }
+
+        .chord-meta {
+            font-size: 0.875rem;
+            color: rgba(233, 213, 255, 0.6);
+        }
+
+        .chord-duration {
+            font-family: monospace;
+            color: #d8b4fe;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(233, 213, 255, 0.5);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e9d5ff;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-container {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .timeline {
+            min-width: 900px;
+            height: 400px;
+            position: relative;
+            margin-left: 60px;
+            margin-bottom: 40px;
+        }
+
+        .timeline-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .timeline-grid-line {
+            height: 1px;
+            background: rgba(168, 85, 247, 0.15);
+            position: relative;
+        }
+
+        .note-label {
+            position: absolute;
+            left: -55px;
+            top: -8px;
+            font-size: 0.875rem;
+            color: #d8b4fe;
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        .timeline-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .chord-marker {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .chord-marker-line {
+            width: 2px;
+            background: rgba(168, 85, 247, 0.3);
+            position: absolute;
+            top: 0;
+            bottom: -30px;
+        }
+
+        .chord-marker-label {
+            position: absolute;
+            bottom: -45px;
+            font-size: 0.875rem;
+            font-weight: bold;
+            color: #e9d5ff;
+            white-space: nowrap;
+            background: rgba(147, 51, 234, 0.3);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid rgba(168, 85, 247, 0.5);
+        }
+
+        .timeline-axis {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: rgba(233, 213, 255, 0.5);
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Ambient Chord Progression Generator</h1>
+            <p class="subtitle">Generate evolving chord progressions for your hardware synths</p>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="generateProgression()">
+                    <span>↻</span>
+                    Generate New Progression
+                </button>
+                <button class="btn-secondary" onclick="exportProgression()">
+                    <span>📋</span>
+                    Copy to Clipboard
+                </button>
+            </div>
+
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="key">Key</label>
+                    <select id="key" onchange="generateProgression()">
+                        <option value="C">C</option>
+                        <option value="C#">C#</option>
+                        <option value="D">D</option>
+                        <option value="D#">D#</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F#</option>
+                        <option value="G">G</option>
+                        <option value="G#">G#</option>
+                        <option value="A">A</option>
+                        <option value="A#">A#</option>
+                        <option value="B">B</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="mode">Mode</label>
+                    <select id="mode" onchange="generateProgression()">
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="dorian">Dorian</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="voicingMode">Voicing Mode</label>
+                    <select id="voicingMode" onchange="handleVoicingModeChange()">
+                        <option value="fixed">Fixed</option>
+                        <option value="varied">Varied</option>
+                        <option value="random">Random</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="progressionLength">Progression Length: <span id="lengthValue">4</span></label>
+                    <input type="range" id="progressionLength" min="2" max="8" value="4" 
+                           oninput="document.getElementById('lengthValue').textContent = this.value; generateProgression()">
+                </div>
+
+                <div class="control-group">
+                    <label for="changeRate">Base Change: <span id="changeValue">4</span> beats</label>
+                    <input type="range" id="changeRate" min="2" max="16" step="2" value="4" 
+                           oninput="document.getElementById('changeValue').textContent = this.value; generateProgression()">
+                </div>
+            </div>
+
+            <div id="fixedVoicingControl" class="control-group" style="margin-bottom: 1.5rem; display: none;">
+                <label for="fixedVoicing">Fixed Voicing Type</label>
+                <select id="fixedVoicing" onchange="generateProgression()">
+                    <option value="triad">Triad (3 notes)</option>
+                    <option value="seventh" selected>7th (4 notes)</option>
+                    <option value="ninth">9th (5 notes)</option>
+                    <option value="eleventh">11th (6 notes)</option>
+                </select>
+            </div>
+
+            <div id="voicingVarietyControl" class="control-group" style="margin-bottom: 1.5rem; display: none;">
+                <label for="voicingVariety">Voicing Complexity: <span id="varietyValue">50</span>%</label>
+                <input type="range" id="voicingVariety" min="0" max="1" step="0.1" value="0.5" 
+                       oninput="document.getElementById('varietyValue').textContent = Math.round(this.value * 100); generateProgression()">
+                <p class="help-text">Lower = more triads, Higher = more extended chords</p>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 1.5rem;">
+                <label for="complexity">Timing Complexity: <span id="complexityValue">30</span>%</label>
+                <input type="range" id="complexity" min="0" max="1" step="0.1" value="0.3" 
+                       oninput="document.getElementById('complexityValue').textContent = Math.round(this.value * 100); generateProgression()">
+                <p class="help-text">Higher = more varied chord durations</p>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="useInversions" checked onchange="generateProgression()">
+                <label for="useInversions">Use Smart Inversions (smooth voice leading)</label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Timeline View</h2>
+            <div class="timeline-container">
+                <div id="timeline" class="timeline"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Current Progression</h2>
+            <div id="progressionDisplay" class="progression-list">
+                <div class="empty-state">Click Generate to create a progression</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chordLibrary = {
+            major: {
+                I: { triad: [0, 4, 7], seventh: [0, 4, 7, 11], ninth: [0, 4, 7, 11, 14], eleventh: [0, 4, 7, 11, 14, 17] },
+                ii: { triad: [2, 5, 9], seventh: [2, 5, 9, 12], ninth: [2, 5, 9, 12, 16], eleventh: [2, 5, 9, 12, 16, 19] },
+                iii: { triad: [4, 7, 11], seventh: [4, 7, 11, 14], ninth: [4, 7, 11, 14, 16], eleventh: [4, 7, 11, 14, 16, 19] },
+                IV: { triad: [5, 9, 12], seventh: [5, 9, 12, 16], ninth: [5, 9, 12, 16, 19], eleventh: [5, 9, 12, 16, 19, 22] },
+                V: { triad: [7, 11, 14], seventh: [7, 11, 14, 17], ninth: [7, 11, 14, 17, 21], eleventh: [7, 11, 14, 17, 21, 24] },
+                vi: { triad: [9, 12, 16], seventh: [9, 12, 16, 19], ninth: [9, 12, 16, 19, 21], eleventh: [9, 12, 16, 19, 21, 24] },
+                'vii°': { triad: [11, 14, 17], seventh: [11, 14, 17, 20], ninth: [11, 14, 17, 20, 23], eleventh: [11, 14, 17, 20, 23, 26] }
+            },
+            minor: {
+                i: { triad: [0, 3, 7], seventh: [0, 3, 7, 10], ninth: [0, 3, 7, 10, 14], eleventh: [0, 3, 7, 10, 14, 17] },
+                'ii°': { triad: [2, 5, 8], seventh: [2, 5, 8, 12], ninth: [2, 5, 8, 12, 15], eleventh: [2, 5, 8, 12, 15, 19] },
+                III: { triad: [3, 7, 10], seventh: [3, 7, 10, 14], ninth: [3, 7, 10, 14, 17], eleventh: [3, 7, 10, 14, 17, 20] },
+                iv: { triad: [5, 8, 12], seventh: [5, 8, 12, 15], ninth: [5, 8, 12, 15, 19], eleventh: [5, 8, 12, 15, 19, 22] },
+                v: { triad: [7, 10, 14], seventh: [7, 10, 14, 17], ninth: [7, 10, 14, 17, 19], eleventh: [7, 10, 14, 17, 19, 22] },
+                VI: { triad: [8, 12, 15], seventh: [8, 12, 15, 19], ninth: [8, 12, 15, 19, 22], eleventh: [8, 12, 15, 19, 22, 24] },
+                VII: { triad: [10, 14, 17], seventh: [10, 14, 17, 20], ninth: [10, 14, 17, 20, 22], eleventh: [10, 14, 17, 20, 22, 24] }
+            },
+            dorian: {
+                i: { triad: [0, 3, 7], seventh: [0, 3, 7, 10], ninth: [0, 3, 7, 10, 14], eleventh: [0, 3, 7, 10, 14, 17] },
+                ii: { triad: [2, 5, 9], seventh: [2, 5, 9, 12], ninth: [2, 5, 9, 12, 16], eleventh: [2, 5, 9, 12, 16, 19] },
+                III: { triad: [3, 7, 10], seventh: [3, 7, 10, 14], ninth: [3, 7, 10, 14, 17], eleventh: [3, 7, 10, 14, 17, 19] },
+                IV: { triad: [5, 9, 12], seventh: [5, 9, 12, 16], ninth: [5, 9, 12, 16, 19], eleventh: [5, 9, 12, 16, 19, 21] },
+                v: { triad: [7, 10, 14], seventh: [7, 10, 14, 17], ninth: [7, 10, 14, 17, 19], eleventh: [7, 10, 14, 17, 19, 21] },
+                'vi°': { triad: [9, 12, 15], seventh: [9, 12, 15, 19], ninth: [9, 12, 15, 19, 21], eleventh: [9, 12, 15, 19, 21, 24] },
+                VII: { triad: [10, 14, 17], seventh: [10, 14, 17, 21], ninth: [10, 14, 17, 21, 24], eleventh: [10, 14, 17, 21, 24, 26] }
+            }
+        };
+
+        const commonProgressions = {
+            major: [
+                ['I', 'V', 'vi', 'IV'],
+                ['I', 'vi', 'IV', 'V'],
+                ['I', 'IV', 'V', 'IV'],
+                ['vi', 'IV', 'I', 'V'],
+                ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V']
+            ],
+            minor: [
+                ['i', 'VI', 'III', 'VII'],
+                ['i', 'iv', 'VII', 'VI'],
+                ['i', 'VI', 'VII', 'i'],
+                ['i', 'III', 'VII', 'iv']
+            ],
+            dorian: [
+                ['i', 'IV', 'i', 'IV'],
+                ['i', 'ii', 'IV', 'i'],
+                ['i', 'VII', 'IV', 'i']
+            ]
+        };
+
+        let currentProgression = [];
+
+        function noteToMidi(note, octave = 3) {
+            const noteMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+            return noteMap[note] + (octave + 1) * 12;
+        }
+
+        function midiToNote(midi) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = Math.floor(midi / 12) - 1;
+            const note = noteNames[midi % 12];
+            return `${note}${octave}`;
+        }
+
+        function findBestInversion(currentChordMidi, previousChordMidi) {
+            if (!previousChordMidi || previousChordMidi.length === 0) {
+                return currentChordMidi;
+            }
+            
+            const inversions = [];
+            for (let i = 0; i < currentChordMidi.length; i++) {
+                const inverted = [...currentChordMidi];
+                for (let j = 0; j < i; j++) {
+                    inverted.push(inverted.shift() + 12);
+                }
+                inversions.push(inverted);
+            }
+            
+            let bestInversion = inversions[0];
+            let minDistance = Infinity;
+            
+            inversions.forEach(inv => {
+                let totalDistance = 0;
+                const numVoices = Math.min(inv.length, previousChordMidi.length);
+                
+                for (let i = 0; i < numVoices; i++) {
+                    totalDistance += Math.abs(inv[i] - previousChordMidi[i]);
+                }
+                
+                if (totalDistance < minDistance) {
+                    minDistance = totalDistance;
+                    bestInversion = inv;
+                }
+            });
+            
+            return bestInversion;
+        }
+
+        function handleVoicingModeChange() {
+            const mode = document.getElementById('voicingMode').value;
+            document.getElementById('fixedVoicingControl').style.display = mode === 'fixed' ? 'flex' : 'none';
+            document.getElementById('voicingVarietyControl').style.display = mode === 'varied' ? 'flex' : 'none';
+            generateProgression();
+        }
+
+        function generateProgression() {
+            const key = document.getElementById('key').value;
+            const mode = document.getElementById('mode').value;
+            const voicingMode = document.getElementById('voicingMode').value;
+            const fixedVoicing = document.getElementById('fixedVoicing').value;
+            const voicingVariety = parseFloat(document.getElementById('voicingVariety').value);
+            const progressionLength = parseInt(document.getElementById('progressionLength').value);
+            const changeRate = parseInt(document.getElementById('changeRate').value);
+            const complexity = parseFloat(document.getElementById('complexity').value);
+            const useInversions = document.getElementById('useInversions').checked;
+
+            const baseProgression = commonProgressions[mode][Math.floor(Math.random() * commonProgressions[mode].length)];
+            const newProgression = [];
+            const rootMidi = noteToMidi(key);
+            
+            const voicingTypes = ['triad', 'seventh', 'ninth', 'eleventh'];
+            let previousChordMidi = null;
+            
+            const chordsToUse = baseProgression.slice(0, progressionLength);
+            
+            chordsToUse.forEach((chordName) => {
+                const chordVoicings = chordLibrary[mode][chordName];
+                
+                let selectedVoicing;
+                if (voicingMode === 'fixed') {
+                    selectedVoicing = fixedVoicing;
+                } else if (voicingMode === 'varied') {
+                    const rand = Math.random();
+                    if (rand < (1 - voicingVariety) * 0.5) {
+                        selectedVoicing = 'triad';
+                    } else if (rand < (1 - voicingVariety) * 0.7 + voicingVariety * 0.3) {
+                        selectedVoicing = 'seventh';
+                    } else if (rand < (1 - voicingVariety) * 0.85 + voicingVariety * 0.6) {
+                        selectedVoicing = 'ninth';
+                    } else {
+                        selectedVoicing = 'eleventh';
+                    }
+                } else {
+                    selectedVoicing = voicingTypes[Math.floor(Math.random() * voicingTypes.length)];
+                }
+                
+                const chordIntervals = chordVoicings[selectedVoicing];
+                let chordMidi = chordIntervals.map(interval => rootMidi + interval);
+                
+                let inversionType = 'root';
+                if (useInversions) {
+                    chordMidi = findBestInversion(chordMidi, previousChordMidi);
+                    const rootPosition = chordIntervals.map(interval => rootMidi + interval);
+                    const lowestNote = chordMidi[0] % 12;
+                    const rootNote = rootPosition[0] % 12;
+                    if (lowestNote === rootNote) {
+                        inversionType = 'root';
+                    } else {
+                        const inversionIndex = rootPosition.findIndex(n => (n % 12) === lowestNote);
+                        if (inversionIndex === 1) inversionType = '1st';
+                        else if (inversionIndex === 2) inversionType = '2nd';
+                        else if (inversionIndex === 3) inversionType = '3rd';
+                        else inversionType = `${inversionIndex}th`;
+                    }
+                }
+                
+                const notes = chordMidi.map(midi => midiToNote(midi));
+                previousChordMidi = chordMidi;
+                
+                let duration = changeRate;
+                if (Math.random() < complexity) {
+                    duration = [2, 4, 8][Math.floor(Math.random() * 3)];
+                }
+                
+                newProgression.push({
+                    name: chordName,
+                    notes: notes,
+                    voicing: selectedVoicing,
+                    inversion: inversionType,
+                    duration: duration
+                });
+            });
+            
+            currentProgression = newProgression;
+            displayProgression();
+        }
+
+        function displayProgression() {
+            const display = document.getElementById('progressionDisplay');
+            const useInversions = document.getElementById('useInversions').checked;
+            
+            if (currentProgression.length === 0) {
+                display.innerHTML = '<div class="empty-state">Click Generate to create a progression</div>';
+                return;
+            }
+            
+            display.innerHTML = currentProgression.map((chord, i) => `
+                <div class="chord-item">
+                    <div class="chord-info">
+                        <span class="chord-name">${chord.name}</span>
+                        <span class="chord-notes">${chord.notes.join(' - ')}</span>
+                        <span class="chord-meta">(${chord.voicing}${useInversions ? `, ${chord.inversion} inv` : ''})</span>
+                    </div>
+                    <div class="chord-duration">${chord.duration} beats</div>
+                </div>
+            `).join('');
+
+            displayTimeline();
+        }
+
+        function displayTimeline() {
+            const timeline = document.getElementById('timeline');
+            
+            if (currentProgression.length === 0) {
+                timeline.innerHTML = '';
+                return;
+            }
+
+            // Calculate total duration and note range
+            const totalBeats = currentProgression.reduce((sum, c) => sum + c.duration, 0);
+            let allMidiNotes = [];
+            currentProgression.forEach(chord => {
+                chord.notes.forEach(note => {
+                    const midi = noteNameToMidi(note);
+                    allMidiNotes.push(midi);
+                });
+            });
+
+            const minNote = Math.min(...allMidiNotes) - 1;
+            const maxNote = Math.max(...allMidiNotes) + 1;
+            const noteRange = maxNote - minNote;
+
+            // Create grid lines with note labels
+            let gridHTML = '<div class="timeline-grid">';
+            for (let midiNote = maxNote; midiNote >= minNote; midiNote--) {
+                const noteName = midiToNote(midiNote);
+                gridHTML += `<div class="timeline-grid-line"><span class="note-label">${noteName}</span></div>`;
+            }
+            gridHTML += '</div>';
+
+            // Create canvas for drawing connections
+            const canvas = document.createElement('canvas');
+            const timelineWidth = 900;
+            const timelineHeight = 400;
+            canvas.width = timelineWidth;
+            canvas.height = timelineHeight;
+            canvas.className = 'timeline-canvas';
+            
+            const ctx = canvas.getContext('2d');
+
+            // Calculate positions for each chord
+            let currentTime = 0;
+            const chordPositions = currentProgression.map((chord, idx) => {
+                const x = (currentTime / totalBeats) * timelineWidth;
+                const notes = chord.notes.map(note => {
+                    const midi = noteNameToMidi(note);
+                    const y = ((maxNote - midi) / (maxNote - minNote)) * timelineHeight;
+                    return { midi, y };
+                });
+                currentTime += chord.duration;
+                return { x, notes, chord };
+            });
+
+            // Draw voice leading lines
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            
+            // Draw normal connections between consecutive chords
+            for (let i = 0; i < chordPositions.length - 1; i++) {
+                const current = chordPositions[i];
+                const next = chordPositions[i + 1];
+                
+                const maxVoices = Math.max(current.notes.length, next.notes.length);
+                
+                for (let v = 0; v < maxVoices; v++) {
+                    if (v < current.notes.length && v < next.notes.length) {
+                        const gradient = ctx.createLinearGradient(current.x, current.notes[v].y, next.x, next.notes[v].y);
+                        gradient.addColorStop(0, 'rgba(168, 85, 247, 0.7)');
+                        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.7)');
+                        
+                        ctx.strokeStyle = gradient;
+                        ctx.beginPath();
+                        ctx.moveTo(current.x, current.notes[v].y);
+                        ctx.lineTo(next.x, next.notes[v].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Draw loop connection from last chord back to first chord
+            if (chordPositions.length > 1) {
+                const lastChord = chordPositions[chordPositions.length - 1];
+                const firstChord = chordPositions[0];
+                
+                const maxVoices = Math.max(lastChord.notes.length, firstChord.notes.length);
+                
+                for (let v = 0; v < maxVoices; v++) {
+                    if (v < lastChord.notes.length && v < firstChord.notes.length) {
+                        // Draw arc from last to first - arc goes UP above the timeline
+                        const midY = (lastChord.notes[v].y + firstChord.notes[v].y) / 2;
+                        const arcHeight = 80; // How high above the midpoint
+                        const controlY = Math.max(0, midY - arcHeight); // Keep it above top edge
+                        
+                        ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+                        ctx.setLineDash([8, 4]);
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(lastChord.x, lastChord.notes[v].y);
+                        ctx.bezierCurveTo(
+                            lastChord.x + 100, controlY,
+                            firstChord.x - 100, controlY,
+                            firstChord.x, firstChord.notes[v].y
+                        );
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.lineWidth = 2.5;
+                    }
+                }
+            }
+
+            // Draw note circles at each chord position
+            chordPositions.forEach((pos, idx) => {
+                pos.notes.forEach(note => {
+                    // Draw outer glow
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, note.y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw note circle
+                    ctx.fillStyle = idx === 0 ? '#a855f7' : '#8b5cf6';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, note.y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw inner highlight
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(pos.x - 1, note.y - 1, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+
+            // Create chord markers
+            let markersHTML = '';
+            chordPositions.forEach(pos => {
+                markersHTML += `
+                    <div class="chord-marker" style="left: ${pos.x}px;">
+                        <div class="chord-marker-line"></div>
+                        <div class="chord-marker-label">${pos.chord.name}</div>
+                    </div>
+                `;
+            });
+
+            // Create time axis
+            let axisHTML = '<div class="timeline-axis">';
+            const numTicks = 9;
+            for (let i = 0; i <= numTicks; i++) {
+                const beat = Math.round((i / numTicks) * totalBeats);
+                const x = (i / numTicks) * 100;
+                axisHTML += `<span style="position: absolute; left: ${x}%;">${beat}b</span>`;
+            }
+            axisHTML += '</div>';
+
+            timeline.innerHTML = gridHTML + markersHTML + axisHTML;
+            timeline.appendChild(canvas);
+        }
+
+        function noteNameToMidi(noteName) {
+            const noteMap = { 'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11 };
+            const match = noteName.match(/([A-G]#?)(\d+)/);
+            if (!match) return 60;
+            const note = match[1];
+            const octave = parseInt(match[2]);
+            return noteMap[note] + (octave + 1) * 12;
+        }
+
+        function exportProgression() {
+            if (currentProgression.length === 0) {
+                alert('Generate a progression first!');
+                return;
+            }
+
+            const key = document.getElementById('key').value;
+            const mode = document.getElementById('mode').value;
+            const voicingMode = document.getElementById('voicingMode').value;
+            const fixedVoicing = document.getElementById('fixedVoicing').value;
+            const voicingVariety = parseFloat(document.getElementById('voicingVariety').value);
+            const progressionLength = parseInt(document.getElementById('progressionLength').value);
+            const changeRate = parseInt(document.getElementById('changeRate').value);
+            const useInversions = document.getElementById('useInversions').checked;
+
+            const output = {
+                key: key,
+                mode: mode,
+                voicingMode: voicingMode,
+                useInversions: useInversions,
+                progressionLength: progressionLength,
+                progression: currentProgression.map(c => ({
+                    chord: c.name,
+                    voicing: c.voicing,
+                    inversion: c.inversion,
+                    notes: c.notes,
+                    duration: `${c.duration} beats`,
+                    durationQuarters: c.duration
+                }))
+            };
+            
+            const totalBeats = currentProgression.reduce((sum, c) => sum + c.duration, 0);
+            
+            const text = `Key: ${key} ${mode}
+Voicing Mode: ${voicingMode}${voicingMode === 'fixed' ? ` (${fixedVoicing})` : ''}${voicingMode === 'varied' ? ` (complexity: ${Math.round(voicingVariety * 100)}%)` : ''}
+Smart Inversions: ${useInversions ? 'Enabled' : 'Disabled'}
+Progression Length: ${progressionLength} chords
+Change Rate: Every ${changeRate} beats (with variations)
+
+Progression:
+${currentProgression.map((c, i) => `${i + 1}. ${c.name} [${c.voicing}${useInversions ? `, ${c.inversion} inv` : ''}] - ${c.notes.join(', ')} - ${c.duration} beats`).join('\n')}
+
+Total Loop Length: ${totalBeats} beats
+
+JSON Export:
+${JSON.stringify(output, null, 2)}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Progression copied to clipboard!');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('Progression copied to clipboard!');
+            });
+        }
+
+        // Initialize
+        handleVoicingModeChange();
+        generateProgression();
+    </script>
+</body>
+</html>
