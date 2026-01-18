@@ -164,6 +164,7 @@
 
         <div class="card">
             <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Current Progression</h2>
+            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
             <div id="progressionList"></div>
         </div>
 
@@ -402,6 +403,41 @@
                     <div style="font-family: monospace; color: #d8b4fe;">${c.duration} beats</div>
                 </div>
             `).join('');
+            
+            // Show loop quality
+            if (progression.length > 0 && useInv) {
+                const first = progression[0].notes.map(noteNameToMidi);
+                const last = progression[progression.length - 1].notes.map(noteNameToMidi);
+                
+                let totalDist = 0;
+                const voices = Math.min(first.length, last.length);
+                for (let i = 0; i < voices; i++) {
+                    totalDist += Math.abs(first[i] - last[i]);
+                }
+                const avgDist = (totalDist / voices).toFixed(1);
+                
+                const quality = document.getElementById('loopQuality');
+                if (avgDist < 3) {
+                    quality.innerHTML = `<strong>Loop Quality: Excellent ✓</strong><br>Average distance: ${avgDist} semitones (very smooth loop)`;
+                    quality.style.background = 'rgba(34, 197, 94, 0.2)';
+                } else if (avgDist < 6) {
+                    quality.innerHTML = `<strong>Loop Quality: Good</strong><br>Average distance: ${avgDist} semitones (smooth loop)`;
+                    quality.style.background = 'rgba(234, 179, 8, 0.2)';
+                } else {
+                    quality.innerHTML = `<strong>Loop Quality: Fair</strong><br>Average distance: ${avgDist} semitones (moderate jump)`;
+                    quality.style.background = 'rgba(239, 68, 68, 0.2)';
+                }
+                
+                // Show individual voice movements
+                const details = [];
+                for (let i = 0; i < voices; i++) {
+                    const dist = Math.abs(first[i] - last[i]);
+                    details.push(`Voice ${i + 1}: ${dist} semitones`);
+                }
+                quality.innerHTML += `<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">${details.join(' • ')}</span>`;
+            } else {
+                document.getElementById('loopQuality').innerHTML = '';
+            }
         }
 
         function drawTimeline() {
