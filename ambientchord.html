@@ -79,7 +79,25 @@
             height: 1px;
             background: rgba(168, 85, 247, 0.15);
         }
-        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
+        #timeline-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(15, 10, 40, 0.92);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #e9d5ff;
+            line-height: 1.6;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            z-index: 100;
+        }
+        #timeline-tooltip.visible { opacity: 1; }
 
         /* Bass line styles */
         .bass-note-item {
@@ -106,6 +124,7 @@
     </style>
 </head>
 <body>
+    <div id="timeline-tooltip"></div>
     <div class="container">
         <div class="card">
             <h1>Ambient Chord Progression Generator</h1>
@@ -263,6 +282,7 @@
     <script>
         let progression = [];
         let bassLine = [];
+        let timelineHitTargets = []; // { x, y, label, isBass }
         
         const chordLibrary = {
             major: {
@@ -732,8 +752,10 @@
                 }
             }
             const dotR = Math.max(3, Math.min(5, rowH / 4));
-            positions.forEach(pos => {
-                pos.notes.forEach(note => {
+            timelineHitTargets = [];
+            positions.forEach((pos, chordIdx) => {
+                const chord = pos.chord;
+                pos.notes.forEach((note, voiceIdx) => {
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR + 3, 0, Math.PI * 2);
@@ -742,6 +764,11 @@
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR, 0, Math.PI * 2);
                     ctx.fill();
+                    timelineHitTargets.push({
+                        x: pos.x, y: note.y, r: dotR + 6,
+                        isBass: false,
+                        label: `${chord.name}  •  ${midiToNote(note.midi)}\nVoice ${voiceIdx + 1}  •  ${chord.voicing}, ${chord.inversion} inv\n${chord.duration} beats`
+                    });
                 });
             });
 
@@ -751,7 +778,7 @@
                 let bx = padding;
                 const bassPoints = [];
 
-                bassLine.forEach(note => {
+                bassLine.forEach((note, bassIdx) => {
                     const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
                     if (!note.rest) {
                         const by = toY(note.midi);
@@ -778,6 +805,12 @@
                             ctx.font = `${Math.max(8, rowH - 6)}px monospace`;
                             ctx.fillText(midiToNote(note.midi), bx + 14, by + 4);
                         }
+
+                        timelineHitTargets.push({
+                            x: bx + 4, y: by, r: dotR + 8,
+                            isBass: true,
+                            label: `Bass  •  ${midiToNote(note.midi)}\n${note.type}  •  ${note.duration} beat${note.duration !== 1 ? 's' : ''}`
+                        });
                     }
                     bx += bw;
                 });
@@ -849,6 +882,59 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
 
         updateVoicingControls();
         generateProgression();
+
+        // ── Timeline tooltip on hover ──
+        (function() {
+            const tooltip = document.getElementById('timeline-tooltip');
+            const canvas = document.getElementById('canvas');
+
+            canvas.addEventListener('mousemove', e => {
+                const rect = canvas.getBoundingClientRect();
+                // Scale mouse coords from CSS pixels to canvas pixels
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top) * scaleY;
+
+                let hit = null;
+                let best = Infinity;
+                timelineHitTargets.forEach(t => {
+                    const dist = Math.sqrt((mx - t.x) ** 2 + (my - t.y) ** 2);
+                    if (dist < t.r && dist < best) { best = dist; hit = t; }
+                });
+
+                if (hit) {
+                    const lines = hit.label.split('\n');
+                    tooltip.innerHTML = lines.map((l, i) => {
+                        const color = i === 0
+                            ? (hit.isBass ? '#7dd3fc' : '#d8b4fe')
+                            : 'rgba(233,213,255,0.65)';
+                        return `<span style="color:${color}">${l}</span>`;
+                    }).join('<br>');
+                    tooltip.style.borderColor = hit.isBass
+                        ? 'rgba(56,189,248,0.6)'
+                        : 'rgba(168,85,247,0.6)';
+
+                    // Position tooltip — keep it inside viewport
+                    const tw = 180, th = 70;
+                    let tx = e.clientX + 14;
+                    let ty = e.clientY - 10;
+                    if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+                    if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 10;
+                    tooltip.style.left = tx + 'px';
+                    tooltip.style.top = ty + 'px';
+                    tooltip.classList.add('visible');
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tooltip.classList.remove('visible');
+                    canvas.style.cursor = 'crosshair';
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('visible');
+            });
+        })();
 
         // Redraw on window resize
         let resizeTimer;
