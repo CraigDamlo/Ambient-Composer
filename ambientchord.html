@@ -36,7 +36,7 @@
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .control-group { display: flex; flex-direction: column; }
         label { font-size: 0.875rem; margin-bottom: 0.5rem; }
-        select, input { 
+        select, input[type="range"] { 
             padding: 0.5rem; 
             background: #334155; 
             color: #e9d5ff; 
@@ -82,6 +82,29 @@
             background: rgba(168, 85, 247, 0.15);
         }
         canvas { position: absolute; top: 0; left: 0; }
+
+        /* Bass line styles */
+        .bass-note-item {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.6rem 0.8rem;
+            background: rgba(30, 64, 115, 0.5);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            margin: 0.25rem;
+            font-family: monospace;
+            min-width: 60px;
+        }
+        .bass-note-name { font-size: 1.1rem; font-weight: bold; color: #7dd3fc; }
+        .bass-note-dur { font-size: 0.75rem; color: rgba(125, 211, 252, 0.6); margin-top: 2px; }
+        .bass-note-type { font-size: 0.7rem; color: rgba(125, 211, 252, 0.45); }
+        #bassNoteContainer { display: flex; flex-wrap: wrap; margin-top: 0.75rem; }
+        .section-divider {
+            height: 1px;
+            background: rgba(168, 85, 247, 0.2);
+            margin: 1.5rem 0;
+        }
     </style>
 </head>
 <body>
@@ -168,11 +191,72 @@
             <div id="progressionList"></div>
         </div>
 
+        <!-- BASS LINE CARD -->
         <div class="card">
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Timeline View</h2>
+            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">Bass Line</h2>
+            <p style="color: rgba(125, 211, 252, 0.7); font-size: 0.875rem; margin-bottom: 1.25rem;">
+                Auto-generated bass following the chord progression
+            </p>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label>Bass Style</label>
+                    <select id="bassStyle" onchange="generateBassLine()">
+                        <option value="root">Root Only</option>
+                        <option value="rootFifth">Root + Fifth</option>
+                        <option value="walking">Walking</option>
+                        <option value="arpeggiated">Arpeggiated</option>
+                        <option value="pedal">Pedal Point</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Bass Octave</label>
+                    <select id="bassOctave" onchange="generateBassLine()">
+                        <option value="1">Octave 1 (very deep)</option>
+                        <option value="2" selected>Octave 2 (deep)</option>
+                        <option value="3">Octave 3 (mid-bass)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Bass Density: <span id="densityVal">50</span>%</label>
+                    <input type="range" id="bassDensity" min="0" max="1" step="0.1" value="0.5"
+                           oninput="document.getElementById('densityVal').textContent=Math.round(this.value*100); generateBassLine()">
+                </div>
+                <div class="control-group">
+                    <label>Syncopation: <span id="syncoVal">20</span>%</label>
+                    <input type="range" id="bassSynco" min="0" max="1" step="0.1" value="0.2"
+                           oninput="document.getElementById('syncoVal').textContent=Math.round(this.value*100); generateBassLine()">
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                <input type="checkbox" id="bassRests" onchange="generateBassLine()">
+                <label for="bassRests">Include rests</label>
+                &nbsp;&nbsp;
+                <input type="checkbox" id="bassOctaveJumps" onchange="generateBassLine()">
+                <label for="bassOctaveJumps">Octave jumps</label>
+            </div>
+
+            <div id="bassNoteContainer"></div>
+
+            <div class="section-divider"></div>
+
+            <div id="bassTimeline" style="background: rgba(15, 23, 42, 0.8); border-radius: 8px; padding: 1.5rem; padding-left: 80px; overflow-x: auto;">
+                <div id="bassTimelineInner" style="position: relative; min-width: 900px; height: 160px;">
+                    <canvas id="bassCanvas" width="900" height="160"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">Timeline View</h2>
+            <div style="display:flex; gap:1.5rem; margin-bottom:1rem; font-size:0.8rem; color:rgba(233,213,255,0.6);">
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b5cf6;margin-right:5px;vertical-align:middle;"></span>Chords</span>
+                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#38bdf8;margin-right:5px;vertical-align:middle;"></span>Bass</span>
+            </div>
             <div class="timeline-wrapper">
                 <div id="timeline">
-                    <canvas id="canvas" width="900" height="400"></canvas>
+                    <canvas id="canvas" width="900" height="440"></canvas>
                 </div>
             </div>
         </div>
@@ -180,6 +264,7 @@
 
     <script>
         let progression = [];
+        let bassLine = [];
         
         const chordLibrary = {
             major: {
@@ -236,31 +321,19 @@
 
         function findBestInversion(chord, prevChord) {
             if (!prevChord || prevChord.length === 0) return chord;
-            
             const inversions = [];
             for (let i = 0; i < chord.length; i++) {
                 const inv = [...chord];
-                for (let j = 0; j < i; j++) {
-                    inv.push(inv.shift() + 12);
-                }
+                for (let j = 0; j < i; j++) inv.push(inv.shift() + 12);
                 inversions.push(inv);
             }
-            
-            let best = inversions[0];
-            let minDist = Infinity;
-            
+            let best = inversions[0], minDist = Infinity;
             inversions.forEach(inv => {
                 let dist = 0;
                 const voices = Math.min(inv.length, prevChord.length);
-                for (let i = 0; i < voices; i++) {
-                    dist += Math.abs(inv[i] - prevChord[i]);
-                }
-                if (dist < minDist) {
-                    minDist = dist;
-                    best = inv;
-                }
+                for (let i = 0; i < voices; i++) dist += Math.abs(inv[i] - prevChord[i]);
+                if (dist < minDist) { minDist = dist; best = inv; }
             });
-            
             return best;
         }
 
@@ -269,6 +342,196 @@
             document.getElementById('voicingFixed').style.display = mode === 'fixed' ? 'block' : 'none';
             document.getElementById('voicingVaried').style.display = mode === 'varied' ? 'block' : 'none';
         }
+
+        // ─── BASS LINE GENERATION ───────────────────────────────────────────
+
+        function getChordMidiNotes(chord, octave) {
+            // chord.notes are strings like "C3", "E3"...
+            // We re-map them to the requested bass octave
+            return chord.notes.map(n => {
+                const match = n.match(/([A-G]#?)(\d+)/);
+                const map = {'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11};
+                return map[match[1]] + (parseInt(octave) + 1) * 12;
+            });
+        }
+
+        function generateBassLine() {
+            if (progression.length === 0) return;
+
+            const style = document.getElementById('bassStyle').value;
+            const octave = parseInt(document.getElementById('bassOctave').value);
+            const density = parseFloat(document.getElementById('bassDensity').value);
+            const synco = parseFloat(document.getElementById('bassSynco').value);
+            const useRests = document.getElementById('bassRests').checked;
+            const useOctaveJumps = document.getElementById('bassOctaveJumps').checked;
+
+            bassLine = [];
+
+            progression.forEach(chord => {
+                const rootMidi = noteToMidi(document.getElementById('key').value, octave)
+                    + chordLibrary[document.getElementById('mode').value][chord.name].triad[0];
+                const fifthMidi = rootMidi + 7;
+                const thirdMidi = rootMidi + (document.getElementById('mode').value === 'major' ? 4 : 3);
+                const chordTones = [rootMidi, thirdMidi, fifthMidi];
+                const duration = chord.duration;
+
+                // Build a list of sub-notes within this chord's duration
+                const notes = [];
+                let beat = 0;
+
+                if (style === 'root') {
+                    // One note per chord, whole duration
+                    notes.push({ midi: rootMidi, duration, type: 'root', rest: false });
+                }
+                else if (style === 'rootFifth') {
+                    // Alternate root and fifth on half-durations
+                    const half = Math.max(1, Math.floor(duration / 2));
+                    notes.push({ midi: rootMidi, duration: half, type: 'root', rest: false });
+                    notes.push({ midi: fifthMidi, duration: duration - half, type: '5th', rest: false });
+                }
+                else if (style === 'walking') {
+                    // Walk down/up chord tones per beat
+                    let remaining = duration;
+                    let dir = Math.random() < 0.5 ? 1 : -1;
+                    let pos = 0;
+                    while (remaining > 0) {
+                        const noteDur = Math.random() < synco ? 1 : 2;
+                        const dur = Math.min(noteDur, remaining);
+                        const isRest = useRests && Math.random() < (1 - density) * 0.4;
+                        const midi = chordTones[((pos % chordTones.length) + chordTones.length) % chordTones.length];
+                        const octJump = useOctaveJumps && Math.random() < 0.12;
+                        notes.push({ midi: midi + (octJump ? 12 : 0), duration: dur, type: 'walk', rest: isRest });
+                        pos += dir;
+                        if (Math.random() < 0.3) dir *= -1;
+                        remaining -= dur;
+                    }
+                }
+                else if (style === 'arpeggiated') {
+                    let remaining = duration;
+                    let pos = 0;
+                    while (remaining > 0) {
+                        const noteDur = Math.random() < synco ? 1 : 2;
+                        const dur = Math.min(noteDur, remaining);
+                        const isRest = useRests && Math.random() < (1 - density) * 0.35;
+                        const toneIdx = pos % chordTones.length;
+                        const octShift = useOctaveJumps && pos >= chordTones.length ? 12 : 0;
+                        notes.push({ midi: chordTones[toneIdx] + octShift, duration: dur, type: 'arp', rest: isRest });
+                        pos++;
+                        remaining -= dur;
+                    }
+                }
+                else if (style === 'pedal') {
+                    // Root on beat 1, rests/skips otherwise
+                    let remaining = duration;
+                    notes.push({ midi: rootMidi, duration: 2, type: 'pedal', rest: false });
+                    remaining -= 2;
+                    while (remaining > 0) {
+                        const dur = Math.min(2, remaining);
+                        const isRest = Math.random() < (1 - density * 0.7);
+                        notes.push({ midi: rootMidi + (useOctaveJumps && !isRest && Math.random() < 0.3 ? 12 : 0), duration: dur, type: 'pedal', rest: isRest });
+                        remaining -= dur;
+                    }
+                }
+
+                bassLine.push(...notes);
+            });
+
+            displayBassLine();
+            drawBassTimeline();
+            drawTimeline(); // redraw combined view
+        }
+
+        function displayBassLine() {
+            const container = document.getElementById('bassNoteContainer');
+            container.innerHTML = bassLine.map(n => `
+                <div class="bass-note-item" style="${n.rest ? 'opacity:0.4;' : ''}">
+                    <span class="bass-note-name">${n.rest ? '—' : midiToNote(n.midi)}</span>
+                    <span class="bass-note-dur">${n.duration}b</span>
+                    <span class="bass-note-type">${n.rest ? 'rest' : n.type}</span>
+                </div>
+            `).join('');
+        }
+
+        function drawBassTimeline() {
+            const canvas = document.getElementById('bassCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = 900, height = 160;
+            ctx.clearRect(0, 0, width, height);
+
+            if (bassLine.length === 0) return;
+
+            const totalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
+            const activeMidi = bassLine.filter(n => !n.rest).map(n => n.midi);
+            if (activeMidi.length === 0) return;
+
+            const minNote = Math.min(...activeMidi) - 1;
+            const maxNote = Math.max(...activeMidi) + 1;
+            const noteRange = maxNote - minNote || 1;
+
+            const padding = 10;
+            let x = padding;
+
+            bassLine.forEach((note, i) => {
+                const w = (note.duration / totalBeats) * (width - padding * 2);
+
+                if (!note.rest) {
+                    const y = ((maxNote - note.midi) / noteRange) * (height - 20) + 10;
+                    // Draw block
+                    ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
+                    ctx.fillRect(x + 1, y - 8, w - 2, 16);
+                    // Draw line
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + w, y);
+                    ctx.stroke();
+                    // Dot
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(x + 4, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Label
+                    ctx.fillStyle = 'rgba(125, 211, 252, 0.85)';
+                    ctx.font = '10px monospace';
+                    ctx.fillText(midiToNote(note.midi), x + 10, y + 4);
+                } else {
+                    // Rest - dashed line
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(x, height / 2);
+                    ctx.lineTo(x + w, height / 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                x += w;
+            });
+
+            // Connect non-rest notes with faint lines
+            const notePositions = [];
+            let cx = padding;
+            bassLine.forEach(note => {
+                const w = (note.duration / totalBeats) * (width - padding * 2);
+                if (!note.rest) {
+                    const y = ((maxNote - note.midi) / noteRange) * (height - 20) + 10;
+                    notePositions.push({ x: cx + 4, y });
+                }
+                cx += w;
+            });
+            if (notePositions.length > 1) {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(notePositions[0].x, notePositions[0].y);
+                notePositions.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+            }
+        }
+
+        // ─── CHORD PROGRESSION ──────────────────────────────────────────────
 
         function generateProgression() {
             const key = document.getElementById('key').value;
@@ -289,7 +552,6 @@
             const tempChords = [];
             chordsToUse.forEach(chordName => {
                 const voicings = chordLibrary[mode][chordName];
-                
                 let selectedVoicing;
                 if (voicingMode === 'fixed') {
                     selectedVoicing = fixedVoicing;
@@ -302,59 +564,35 @@
                 } else {
                     selectedVoicing = voicingTypes[Math.floor(Math.random() * voicingTypes.length)];
                 }
-                
                 const intervals = voicings[selectedVoicing];
                 const midi = intervals.map(i => rootMidi + i);
-                
                 let duration = rate;
-                if (Math.random() < complexity) {
-                    duration = [2, 4, 8][Math.floor(Math.random() * 3)];
-                }
-                
+                if (Math.random() < complexity) duration = [2, 4, 8][Math.floor(Math.random() * 3)];
                 tempChords.push({ name: chordName, voicing: selectedVoicing, rootMidi: midi, duration });
             });
 
             if (useInversions && tempChords.length > 1) {
-                let bestSeq = null;
-                let bestDist = Infinity;
-                
+                let bestSeq = null, bestDist = Infinity;
                 for (let firstInv = 0; firstInv < tempChords[0].rootMidi.length; firstInv++) {
                     const first = [...tempChords[0].rootMidi];
-                    for (let i = 0; i < firstInv; i++) {
-                        first.push(first.shift() + 12);
-                    }
-                    
+                    for (let i = 0; i < firstInv; i++) first.push(first.shift() + 12);
                     const seq = [first];
                     let totalDist = 0;
-                    
                     for (let i = 1; i < tempChords.length; i++) {
                         const next = findBestInversion(tempChords[i].rootMidi, seq[i - 1]);
                         seq.push(next);
-                        
                         const voices = Math.min(seq[i - 1].length, next.length);
-                        for (let v = 0; v < voices; v++) {
-                            totalDist += Math.abs(next[v] - seq[i - 1][v]);
-                        }
+                        for (let v = 0; v < voices; v++) totalDist += Math.abs(next[v] - seq[i - 1][v]);
                     }
-                    
                     const last = seq[seq.length - 1];
                     const voices = Math.min(last.length, first.length);
-                    for (let v = 0; v < voices; v++) {
-                        totalDist += Math.abs(first[v] - last[v]);
-                    }
-                    
-                    if (totalDist < bestDist) {
-                        bestDist = totalDist;
-                        bestSeq = seq.map(s => [...s]);
-                    }
+                    for (let v = 0; v < voices; v++) totalDist += Math.abs(first[v] - last[v]);
+                    if (totalDist < bestDist) { bestDist = totalDist; bestSeq = seq.map(s => [...s]); }
                 }
-                
                 if (bestSeq) {
                     progression = tempChords.map((chord, idx) => {
                         const midi = bestSeq[idx];
-                        const lowest = midi[0] % 12;
-                        const root = chord.rootMidi[0] % 12;
-                        
+                        const lowest = midi[0] % 12, root = chord.rootMidi[0] % 12;
                         let inversion = 'root';
                         if (lowest !== root) {
                             const invIdx = chord.rootMidi.findIndex(n => (n % 12) === lowest);
@@ -363,34 +601,24 @@
                             else if (invIdx === 3) inversion = '3rd';
                             else if (invIdx > 0) inversion = invIdx + 'th';
                         }
-                        
-                        return {
-                            name: chord.name,
-                            notes: midi.map(midiToNote),
-                            voicing: chord.voicing,
-                            inversion,
-                            duration: chord.duration
-                        };
+                        return { name: chord.name, notes: midi.map(midiToNote), voicing: chord.voicing, inversion, duration: chord.duration };
                     });
                 }
             } else {
                 progression = tempChords.map(chord => ({
-                    name: chord.name,
-                    notes: chord.rootMidi.map(midiToNote),
-                    voicing: chord.voicing,
-                    inversion: 'root',
-                    duration: chord.duration
+                    name: chord.name, notes: chord.rootMidi.map(midiToNote),
+                    voicing: chord.voicing, inversion: 'root', duration: chord.duration
                 }));
             }
 
             displayProgression();
             drawTimeline();
+            generateBassLine(); // auto-regenerate bass line when chords change
         }
 
         function displayProgression() {
             const list = document.getElementById('progressionList');
             const useInv = document.getElementById('inversions').checked;
-            
             list.innerHTML = progression.map(c => `
                 <div class="chord-item">
                     <div>
@@ -404,18 +632,13 @@
                 </div>
             `).join('');
             
-            // Show loop quality
             if (progression.length > 0 && useInv) {
                 const first = progression[0].notes.map(noteNameToMidi);
                 const last = progression[progression.length - 1].notes.map(noteNameToMidi);
-                
                 let totalDist = 0;
                 const voices = Math.min(first.length, last.length);
-                for (let i = 0; i < voices; i++) {
-                    totalDist += Math.abs(first[i] - last[i]);
-                }
+                for (let i = 0; i < voices; i++) totalDist += Math.abs(first[i] - last[i]);
                 const avgDist = (totalDist / voices).toFixed(1);
-                
                 const quality = document.getElementById('loopQuality');
                 if (avgDist < 3) {
                     quality.innerHTML = `<strong>Loop Quality: Excellent ✓</strong><br>Average distance: ${avgDist} semitones (very smooth loop)`;
@@ -427,13 +650,8 @@
                     quality.innerHTML = `<strong>Loop Quality: Fair</strong><br>Average distance: ${avgDist} semitones (moderate jump)`;
                     quality.style.background = 'rgba(239, 68, 68, 0.2)';
                 }
-                
-                // Show individual voice movements
                 const details = [];
-                for (let i = 0; i < voices; i++) {
-                    const dist = Math.abs(first[i] - last[i]);
-                    details.push(`Voice ${i + 1}: ${dist} semitones`);
-                }
+                for (let i = 0; i < voices; i++) details.push(`Voice ${i + 1}: ${Math.abs(first[i] - last[i])} semitones`);
                 quality.innerHTML += `<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">${details.join(' • ')}</span>`;
             } else {
                 document.getElementById('loopQuality').innerHTML = '';
@@ -442,41 +660,53 @@
 
         function drawTimeline() {
             if (progression.length === 0) return;
-            
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
-            const width = 900;
-            const height = 400;
-            const padding = 10;
-            
+            const width = 900, height = 440, padding = 10;
+            canvas.height = height;
             ctx.clearRect(0, 0, width, height);
-            
+
             const totalBeats = progression.reduce((sum, c) => sum + c.duration, 0);
+
+            // Collect all midi values — chords + bass
             let allMidi = [];
             progression.forEach(c => c.notes.forEach(n => allMidi.push(noteNameToMidi(n))));
-            
-            const minNote = Math.min(...allMidi) - 1;
-            const maxNote = Math.max(...allMidi) + 1;
-            
+            bassLine.forEach(n => { if (!n.rest) allMidi.push(n.midi); });
+            const minNote = Math.min(...allMidi) - 1, maxNote = Math.max(...allMidi) + 1;
+
+            const toY = midi => ((maxNote - midi) / (maxNote - minNote)) * height;
+
+            // ── Draw a divider line between bass register and chord register ──
+            const bassMax = bassLine.filter(n => !n.rest).reduce((m, n) => Math.max(m, n.midi), 0);
+            const chordMin = Math.min(...progression.flatMap(c => c.notes.map(noteNameToMidi)));
+            if (bassMax < chordMin) {
+                const dividerY = (toY(bassMax) + toY(chordMin)) / 2;
+                ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, dividerY);
+                ctx.lineTo(width, dividerY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // ── Chord voice lines ──
             let time = 0;
             const positions = progression.map(c => {
                 const x = padding + (time / totalBeats) * (width - padding);
                 const notes = c.notes.map(n => {
                     const midi = noteNameToMidi(n);
-                    const y = ((maxNote - midi) / (maxNote - minNote)) * height;
-                    return { midi, y };
+                    return { midi, y: toY(midi) };
                 });
                 time += c.duration;
                 return { x, notes, chord: c };
             });
-            
-            // Draw lines
+
             ctx.lineWidth = 2.5;
             for (let i = 0; i < positions.length - 1; i++) {
-                const curr = positions[i];
-                const next = positions[i + 1];
+                const curr = positions[i], next = positions[i + 1];
                 const maxVoices = Math.max(curr.notes.length, next.notes.length);
-                
                 for (let v = 0; v < maxVoices; v++) {
                     if (v < curr.notes.length && v < next.notes.length) {
                         const grad = ctx.createLinearGradient(curr.x, curr.notes[v].y, next.x, next.notes[v].y);
@@ -490,42 +720,97 @@
                     }
                 }
             }
-            
-            // Draw dots
             positions.forEach(pos => {
                 pos.notes.forEach(note => {
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, 8, 0, Math.PI * 2);
                     ctx.fill();
-                    
                     ctx.fillStyle = '#8b5cf6';
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, 5, 0, Math.PI * 2);
                     ctx.fill();
                 });
             });
-            
-            // Draw grid and labels
+
+            // ── Bass line notes ──
+            if (bassLine.length > 0) {
+                const bassTotalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
+                let bx = padding;
+
+                // Collect x,y positions for connecting line
+                const bassPoints = [];
+
+                bassLine.forEach(note => {
+                    const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
+                    if (!note.rest) {
+                        const by = toY(note.midi);
+                        bassPoints.push({ x: bx + 4, y: by });
+
+                        // Glow halo
+                        ctx.fillStyle = 'rgba(14, 165, 233, 0.12)';
+                        ctx.beginPath();
+                        ctx.arc(bx + 4, by, 11, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Outer ring
+                        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.arc(bx + 4, by, 8, 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        // Inner dot
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.beginPath();
+                        ctx.arc(bx + 4, by, 4, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Label
+                        ctx.fillStyle = 'rgba(125, 211, 252, 0.75)';
+                        ctx.font = '9px monospace';
+                        ctx.fillText(midiToNote(note.midi), bx + 14, by + 3);
+                    }
+                    bx += bw;
+                });
+
+                // Connecting line between bass notes
+                if (bassPoints.length > 1) {
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(bassPoints[0].x, bassPoints[0].y);
+                    bassPoints.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // ── Labels & grid ──
             const timeline = document.getElementById('timeline');
+            timeline.style.height = height + 'px';
             timeline.querySelectorAll('.note-labels, .grid-line').forEach(el => el.remove());
-            
+
             const labelDiv = document.createElement('div');
             labelDiv.className = 'note-labels';
             for (let midi = maxNote; midi >= minNote; midi--) {
                 const label = document.createElement('div');
                 label.textContent = midiToNote(midi);
-                label.style.color = '#d8b4fe';
-                label.style.fontSize = '0.875rem';
+                // Colour bass notes blue, chord notes purple
+                const isBass = bassLine.some(n => !n.rest && n.midi === midi);
+                const isChord = progression.some(c => c.notes.some(n => noteNameToMidi(n) === midi));
+                label.style.color = isBass && !isChord ? '#7dd3fc' : '#d8b4fe';
+                label.style.fontSize = '0.8rem';
                 label.style.fontFamily = 'monospace';
                 labelDiv.appendChild(label);
             }
             timeline.appendChild(labelDiv);
-            
+
             for (let midi = maxNote; midi >= minNote; midi--) {
                 const line = document.createElement('div');
                 line.className = 'grid-line';
-                line.style.top = ((maxNote - midi) / (maxNote - minNote)) * height + 'px';
+                line.style.top = toY(midi) + 'px';
                 timeline.appendChild(line);
             }
         }
@@ -534,15 +819,22 @@
             const useInv = document.getElementById('inversions').checked;
             const key = document.getElementById('key').value;
             const mode = document.getElementById('mode').value;
-            
-            const text = `Key: ${key} ${mode}
+            const bassStyle = document.getElementById('bassStyle').value;
+            const bassOctave = document.getElementById('bassOctave').value;
+
+            const chordText = `Key: ${key} ${mode}
 Smart Inversions: ${useInv ? 'Enabled' : 'Disabled'}
 Total Loop Length: ${progression.reduce((s, c) => s + c.duration, 0)} beats
 
-Progression:
+Chord Progression:
 ${progression.map((c, i) => `${i + 1}. ${c.name} [${c.voicing}${useInv ? ', ' + c.inversion + ' inv' : ''}] - ${c.notes.join(', ')} - ${c.duration} beats`).join('\n')}`;
-            
-            navigator.clipboard.writeText(text).then(() => {
+
+            const bassText = bassLine.length > 0 ? `
+
+Bass Line (style: ${bassStyle}, octave: ${bassOctave}):
+${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i + 1}. ${midiToNote(n.midi)} [${n.type}] - ${n.duration} beats`).join('\n')}` : '';
+
+            navigator.clipboard.writeText(chordText + bassText).then(() => {
                 alert('Copied to clipboard!');
             }).catch(() => {
                 alert('Could not copy to clipboard');
