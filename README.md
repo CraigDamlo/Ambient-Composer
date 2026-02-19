@@ -8,7 +8,7 @@ A browser-based tool for generating evolving chord progressions and bass lines f
 
 ## What It Does
 
-Ambient Composer generates looping chord progressions with intelligent voice leading, paired with a synchronized bass line. Everything runs in the browser — no installs, no sign-ups.
+Ambient Composer generates a complete harmonic foundation — chords with intelligent voice leading, a synchronized bass line, and in-browser audio preview. Everything runs in the browser with no installs or sign-ups.
 
 **Chord Progressions**
 - Choose a key, mode (Major / Minor / Dorian), and progression length
@@ -22,20 +22,31 @@ Ambient Composer generates looping chord progressions with intelligent voice lea
 - Regenerates automatically whenever the chord progression changes
 
 **Timeline View**
-- Combined piano-roll-style visualization showing chords (purple) and bass (blue) together on a single responsive canvas
+- Combined piano-roll-style visualization showing chords (purple) and bass (blue) on a single responsive canvas
+- Each note displays as a duration bar so you can see exactly how long it's held
+- Hover over any note for details — chord name, voice, voicing type, inversion, and beat duration
 - Fully scales to your browser window — no scrolling required
+
+**Playback**
+- In-browser audio preview using sine wave oscillators with reverb
+- Full ADSR envelope controls (Attack, Decay, Sustain, Release) for the chord layer
+- BPM slider (20–120, default 60) with optional looping
+- A playhead cursor sweeps across the timeline in sync with playback
+
+**Export**
+- **Copy to Clipboard** — full text export with chord names, voicings, inversions, note names, beat durations, and the complete bass line
+- **Download MIDI** — standard Type-1 MIDI file with two tracks (Chords + Bass), ready to drop into any DAW or hardware sequencer
 
 ---
 
 ## Usage
 
 1. Open the [tool](https://craigdamlo.github.io/Ambient-Composer/ambientchord.html) in any modern browser
-2. Select a key and mode
+2. Select a key, mode, and voicing settings
 3. Hit **↻ Generate New** to create a progression
 4. Dial in your bass line style and settings
-5. Use **📋 Copy to Clipboard** to export the full note list for your synth or DAW
-
-The exported text includes chord names, voicings, inversions, note names, beat durations, and the complete bass line — everything you need to program a sequencer by hand.
+5. Preview with **▶ Play** — adjust BPM and ADSR envelope to taste
+6. Export via **📋 Copy to Clipboard** or **⬇ Download MIDI**
 
 ---
 
