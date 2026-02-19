@@ -283,6 +283,34 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ADSR Controls -->
+            <div style="background:rgba(15,23,42,0.4); border:1px solid rgba(168,85,247,0.2); border-radius:10px; padding:1rem; margin-bottom:1rem;">
+                <div style="font-size:0.75rem; color:rgba(233,213,255,0.5); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Envelope (Chords)</div>
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem;">
+                    <div class="control-group">
+                        <label>Attack: <span id="attackVal">1.5</span>s</label>
+                        <input type="range" id="envAttack" min="0.01" max="4" step="0.01" value="1.5"
+                               oninput="document.getElementById('attackVal').textContent=parseFloat(this.value).toFixed(2)">
+                    </div>
+                    <div class="control-group">
+                        <label>Decay: <span id="decayVal">0.5</span>s</label>
+                        <input type="range" id="envDecay" min="0.01" max="3" step="0.01" value="0.5"
+                               oninput="document.getElementById('decayVal').textContent=parseFloat(this.value).toFixed(2)">
+                    </div>
+                    <div class="control-group">
+                        <label>Sustain: <span id="sustainVal">80</span>%</label>
+                        <input type="range" id="envSustain" min="0" max="1" step="0.01" value="0.8"
+                               oninput="document.getElementById('sustainVal').textContent=Math.round(this.value*100)">
+                    </div>
+                    <div class="control-group">
+                        <label>Release: <span id="releaseVal">2.0</span>s</label>
+                        <input type="range" id="envRelease" min="0.01" max="5" step="0.01" value="2.0"
+                               oninput="document.getElementById('releaseVal').textContent=parseFloat(this.value).toFixed(2)">
+                    </div>
+                </div>
+            </div>
+
             <div style="display:flex; gap:1.5rem; margin-bottom:1rem; font-size:0.8rem; color:rgba(233,213,255,0.6);">
                 <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b5cf6;margin-right:5px;vertical-align:middle;"></span>Chords</span>
                 <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#38bdf8;margin-right:5px;vertical-align:middle;"></span>Bass</span>
@@ -1172,12 +1200,25 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
             playbackLoopLength = totalBeats * secPerBeat;
 
             function scheduleLoop(loopStart) {
+                // Read ADSR values from controls
+                const envA = parseFloat(document.getElementById('envAttack').value);
+                const envD = parseFloat(document.getElementById('envDecay').value);
+                const envS = parseFloat(document.getElementById('envSustain').value);
+                const envR = parseFloat(document.getElementById('envRelease').value);
+                const peakGain = 0.18;
+                const sustainGain = peakGain * envS;
+
                 // ── Chords ──
                 let t = loopStart;
                 progression.forEach(chord => {
                     const dur = chord.duration * secPerBeat;
-                    const attack = Math.min(dur * 0.35, 1.8);
-                    const release = Math.min(dur * 0.4, 2.0);
+                    // Clamp A+D+R so they fit within the note duration
+                    const totalEnv = envA + envD + envR;
+                    const scale = totalEnv > dur ? dur / totalEnv : 1;
+                    const attack  = envA * scale;
+                    const decay   = envD * scale;
+                    const release = envR * scale;
+                    const sustainEnd = Math.max(t + attack + decay, t + dur - release);
 
                     chord.notes.map(noteNameToMidi).forEach(midi => {
                         const freq = 440 * Math.pow(2, (midi - 69) / 12);
@@ -1186,14 +1227,13 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
 
                         osc.type = 'sine';
                         osc.frequency.value = freq;
-
-                        // Add a very subtle detune for warmth
                         osc.detune.value = (Math.random() - 0.5) * 4;
 
                         env.gain.setValueAtTime(0, t);
-                        env.gain.linearRampToValueAtTime(0.18, t + attack);
-                        env.gain.setValueAtTime(0.18, t + dur - release);
-                        env.gain.linearRampToValueAtTime(0, t + dur);
+                        env.gain.linearRampToValueAtTime(peakGain, t + attack);           // Attack
+                        env.gain.linearRampToValueAtTime(sustainGain, t + attack + decay); // Decay → Sustain
+                        env.gain.setValueAtTime(sustainGain, sustainEnd);                  // Hold sustain
+                        env.gain.linearRampToValueAtTime(0, t + dur);                      // Release
 
                         osc.connect(env);
                         env.connect(dryGain);
