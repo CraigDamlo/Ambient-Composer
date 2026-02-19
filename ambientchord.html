@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- saved from url=(0060)file:///Users/Craig/Downloads/ambient-chord-generator_1.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ambient Chord Generator</title>
     <style>
@@ -34,6 +34,8 @@
         .btn-primary { background: #9333ea; color: white; }
         .btn-secondary { background: #16a34a; color: white; }
         .btn-midi { background: #0369a1; color: white; }
+        .btn-play { background: #b45309; color: white; }
+        .btn-play.playing { background: #991b1b; }
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .control-group { display: flex; flex-direction: column; }
         label { font-size: 0.875rem; margin-bottom: 0.5rem; }
@@ -135,15 +137,6 @@
             
             <div>
                 <button class="btn-primary" onclick="generateProgression()">↻ Generate New</button>
-                <button class="btn-secondary" onclick="exportProgression()">📋 Copy to Clipboard</button>
-                <button class="btn-midi" onclick="exportMidi()">⬇ Download MIDI</button>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:1rem; margin-top:1rem;">
-                <div class="control-group" style="flex-direction:row; align-items:center; gap:0.75rem; margin:0;">
-                    <label style="margin:0; white-space:nowrap;">BPM: <span id="bpmVal">60</span></label>
-                    <input type="range" id="bpm" min="20" max="120" value="60" style="width:140px;" oninput="document.getElementById(&#39;bpmVal&#39;).textContent=this.value">
-                </div>
             </div>
 
             <div class="controls">
@@ -173,19 +166,21 @@
                 </div>
                 <div class="control-group">
                     <label>Length: <span id="lengthVal">4</span></label>
-                    <input type="range" id="length" min="2" max="8" value="4" oninput="document.getElementById(&#39;lengthVal&#39;).textContent=this.value; generateProgression()">
+                    <input type="range" id="length" min="2" max="8" value="4" 
+                           oninput="document.getElementById('lengthVal').textContent=this.value; generateProgression()">
                 </div>
                 <div class="control-group">
                     <label>Change Rate: <span id="rateVal">4</span> beats</label>
-                    <input type="range" id="rate" min="2" max="16" step="2" value="4" oninput="document.getElementById(&#39;rateVal&#39;).textContent=this.value; generateProgression()">
+                    <input type="range" id="rate" min="2" max="16" step="2" value="4"
+                           oninput="document.getElementById('rateVal').textContent=this.value; generateProgression()">
                 </div>
             </div>
 
-            <div id="voicingFixed" class="control-group" style="margin-bottom: 1rem; display: block;">
+            <div id="voicingFixed" class="control-group" style="margin-bottom: 1rem; display: none;">
                 <label>Fixed Voicing Type</label>
                 <select id="fixedVoicing" onchange="generateProgression()">
                     <option value="triad">Triad (3 notes)</option>
-                    <option value="seventh" selected="">7th (4 notes)</option>
+                    <option value="seventh" selected>7th (4 notes)</option>
                     <option value="ninth">9th (5 notes)</option>
                     <option value="eleventh">11th (6 notes)</option>
                 </select>
@@ -193,68 +188,26 @@
 
             <div id="voicingVaried" class="control-group" style="margin-bottom: 1rem; display: none;">
                 <label>Voicing Complexity: <span id="varietyVal">50</span>%</label>
-                <input type="range" id="variety" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById(&#39;varietyVal&#39;).textContent=Math.round(this.value*100); generateProgression()">
+                <input type="range" id="variety" min="0" max="1" step="0.1" value="0.5"
+                       oninput="document.getElementById('varietyVal').textContent=Math.round(this.value*100); generateProgression()">
             </div>
 
             <div class="control-group" style="margin-bottom: 1rem;">
                 <label>Timing Complexity: <span id="complexityVal">30</span>%</label>
-                <input type="range" id="complexity" min="0" max="1" step="0.1" value="0.3" oninput="document.getElementById(&#39;complexityVal&#39;).textContent=Math.round(this.value*100); generateProgression()">
+                <input type="range" id="complexity" min="0" max="1" step="0.1" value="0.3"
+                       oninput="document.getElementById('complexityVal').textContent=Math.round(this.value*100); generateProgression()">
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <input type="checkbox" id="inversions" checked="" onchange="generateProgression()">
+                <input type="checkbox" id="inversions" checked onchange="generateProgression()">
                 <label for="inversions">Smart Inversions (smooth voice leading and loops)</label>
             </div>
         </div>
 
         <div class="card">
             <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Current Progression</h2>
-            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(34, 197, 94, 0.2); border-radius: 8px;"><strong>Loop Quality: Excellent ✓</strong><br>Average distance: 1.0 semitones (very smooth loop)<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">Voice 1: 2 semitones • Voice 2: 0 semitones • Voice 3: 0 semitones • Voice 4: 2 semitones</span></div>
-            <div id="progressionList">
-                <div class="chord-item">
-                    <div>
-                        <span class="chord-name">I</span>
-                        <span style="color: #d8b4fe; margin-left: 1rem;">B3 - C4 - E4 - G4</span>
-                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
-                            (seventh, 3rd inv)
-                        </span>
-                    </div>
-                    <div style="font-family: monospace; color: #d8b4fe;">2 beats</div>
-                </div>
-            
-                <div class="chord-item">
-                    <div>
-                        <span class="chord-name">V</span>
-                        <span style="color: #d8b4fe; margin-left: 1rem;">B3 - D4 - F4 - G4</span>
-                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
-                            (seventh, 1st inv)
-                        </span>
-                    </div>
-                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
-                </div>
-            
-                <div class="chord-item">
-                    <div>
-                        <span class="chord-name">vi</span>
-                        <span style="color: #d8b4fe; margin-left: 1rem;">A3 - C4 - E4 - G4</span>
-                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
-                            (seventh, root inv)
-                        </span>
-                    </div>
-                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
-                </div>
-            
-                <div class="chord-item">
-                    <div>
-                        <span class="chord-name">IV</span>
-                        <span style="color: #d8b4fe; margin-left: 1rem;">A3 - C4 - E4 - F4</span>
-                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
-                            (seventh, 1st inv)
-                        </span>
-                    </div>
-                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
-                </div>
-            </div>
+            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
+            <div id="progressionList"></div>
         </div>
 
         <!-- BASS LINE CARD -->
@@ -279,17 +232,19 @@
                     <label>Bass Octave</label>
                     <select id="bassOctave" onchange="generateBassLine()">
                         <option value="1">Octave 1 (very deep)</option>
-                        <option value="2" selected="">Octave 2 (deep)</option>
+                        <option value="2" selected>Octave 2 (deep)</option>
                         <option value="3">Octave 3 (mid-bass)</option>
                     </select>
                 </div>
                 <div class="control-group">
                     <label>Bass Density: <span id="densityVal">50</span>%</label>
-                    <input type="range" id="bassDensity" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById(&#39;densityVal&#39;).textContent=Math.round(this.value*100); generateBassLine()">
+                    <input type="range" id="bassDensity" min="0" max="1" step="0.1" value="0.5"
+                           oninput="document.getElementById('densityVal').textContent=Math.round(this.value*100); generateBassLine()">
                 </div>
                 <div class="control-group">
                     <label>Syncopation: <span id="syncoVal">20</span>%</label>
-                    <input type="range" id="bassSynco" min="0" max="1" step="0.1" value="0.2" oninput="document.getElementById(&#39;syncoVal&#39;).textContent=Math.round(this.value*100); generateBassLine()">
+                    <input type="range" id="bassSynco" min="0" max="1" step="0.1" value="0.2"
+                           oninput="document.getElementById('syncoVal').textContent=Math.round(this.value*100); generateBassLine()">
                 </div>
             </div>
 
@@ -301,51 +256,50 @@
                 <label for="bassOctaveJumps">Octave jumps</label>
             </div>
 
-            <div id="bassNoteContainer">
-                <div class="bass-note-item" style="">
-                    <span class="bass-note-name">C2</span>
-                    <span class="bass-note-dur">2b</span>
-                    <span class="bass-note-type">root</span>
-                </div>
-            
-                <div class="bass-note-item" style="">
-                    <span class="bass-note-name">G2</span>
-                    <span class="bass-note-dur">4b</span>
-                    <span class="bass-note-type">root</span>
-                </div>
-            
-                <div class="bass-note-item" style="">
-                    <span class="bass-note-name">A2</span>
-                    <span class="bass-note-dur">4b</span>
-                    <span class="bass-note-type">root</span>
-                </div>
-            
-                <div class="bass-note-item" style="">
-                    <span class="bass-note-name">F2</span>
-                    <span class="bass-note-dur">4b</span>
-                    <span class="bass-note-type">root</span>
-                </div>
-            </div>
+            <div id="bassNoteContainer"></div>
 
             <div class="section-divider"></div>
 
             <div id="bassTimeline" style="background: rgba(15, 23, 42, 0.8); border-radius: 8px; padding: 1.5rem; padding-left: 70px;">
                 <div id="bassTimelineInner" style="position: relative; width: 100%; height: 120px;">
-                    <canvas id="bassCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;" width="1040" height="120"></canvas>
+                    <canvas id="bassCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">Timeline View</h2>
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+                <h2 style="font-size: 1.5rem; font-weight: bold; margin:0;">Timeline View</h2>
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                    <button class="btn-play" id="playBtn" onclick="togglePlayback()">▶ Play</button>
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <label style="margin:0; font-size:0.875rem; white-space:nowrap;">BPM: <span id="bpmVal">60</span></label>
+                        <input type="range" id="bpm" min="20" max="120" value="60" style="width:110px;"
+                               oninput="document.getElementById('bpmVal').textContent=this.value">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.875rem;">
+                        <input type="checkbox" id="loopPlayback" checked>
+                        <label for="loopPlayback" style="margin:0;">Loop</label>
+                    </div>
+                </div>
+            </div>
             <div style="display:flex; gap:1.5rem; margin-bottom:1rem; font-size:0.8rem; color:rgba(233,213,255,0.6);">
                 <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b5cf6;margin-right:5px;vertical-align:middle;"></span>Chords</span>
                 <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#38bdf8;margin-right:5px;vertical-align:middle;"></span>Bass</span>
             </div>
             <div class="timeline-wrapper">
-                <div id="timeline" style="height: 476px;">
-                    <canvas id="canvas" width="1040" height="476"></canvas>
-                <div class="note-labels"><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">A2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">G2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">F2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">C2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B1</div></div><div class="grid-line" style="top: 0px;"></div><div class="grid-line" style="top: 14.4242px;"></div><div class="grid-line" style="top: 28.8485px;"></div><div class="grid-line" style="top: 43.2727px;"></div><div class="grid-line" style="top: 57.697px;"></div><div class="grid-line" style="top: 72.1212px;"></div><div class="grid-line" style="top: 86.5455px;"></div><div class="grid-line" style="top: 100.97px;"></div><div class="grid-line" style="top: 115.394px;"></div><div class="grid-line" style="top: 129.818px;"></div><div class="grid-line" style="top: 144.242px;"></div><div class="grid-line" style="top: 158.667px;"></div><div class="grid-line" style="top: 173.091px;"></div><div class="grid-line" style="top: 187.515px;"></div><div class="grid-line" style="top: 201.939px;"></div><div class="grid-line" style="top: 216.364px;"></div><div class="grid-line" style="top: 230.788px;"></div><div class="grid-line" style="top: 245.212px;"></div><div class="grid-line" style="top: 259.636px;"></div><div class="grid-line" style="top: 274.061px;"></div><div class="grid-line" style="top: 288.485px;"></div><div class="grid-line" style="top: 302.909px;"></div><div class="grid-line" style="top: 317.333px;"></div><div class="grid-line" style="top: 331.758px;"></div><div class="grid-line" style="top: 346.182px;"></div><div class="grid-line" style="top: 360.606px;"></div><div class="grid-line" style="top: 375.03px;"></div><div class="grid-line" style="top: 389.455px;"></div><div class="grid-line" style="top: 403.879px;"></div><div class="grid-line" style="top: 418.303px;"></div><div class="grid-line" style="top: 432.727px;"></div><div class="grid-line" style="top: 447.152px;"></div><div class="grid-line" style="top: 461.576px;"></div><div class="grid-line" style="top: 476px;"></div></div>
+                <div id="timeline">
+                    <canvas id="canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">Export</h2>
+            <p style="color: rgba(233, 213, 255, 0.6); font-size: 0.875rem; margin-bottom: 1.25rem;">Export the current progression and bass line for use in your DAW or sequencer.</p>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <button class="btn-secondary" onclick="exportProgression()">📋 Copy to Clipboard</button>
+                <button class="btn-midi" onclick="exportMidi()">⬇ Download MIDI</button>
             </div>
         </div>
     </div>
@@ -793,40 +747,58 @@
                 ctx.setLineDash([]);
             }
 
-            // ── Chord voice lines ──
+            // ── Chord voice lines — drawn as duration bars with connecting lines ──
             let time = 0;
             const positions = progression.map(c => {
-                const x = padding + (time / totalBeats) * (width - padding * 2);
+                const x    = padding + (time / totalBeats) * (width - padding * 2);
+                time += c.duration;
+                const xEnd = padding + (time / totalBeats) * (width - padding * 2);
                 const notes = c.notes.map(n => {
                     const midi = noteNameToMidi(n);
                     return { midi, y: toY(midi) };
                 });
-                time += c.duration;
-                return { x, notes, chord: c };
+                return { x, xEnd, notes, chord: c };
             });
 
-            ctx.lineWidth = 2.5;
+            const dotR = Math.max(3, Math.min(5, rowH / 4));
+            timelineHitTargets = [];
+
+            // First pass: sustain bars (drawn under everything)
+            positions.forEach(pos => {
+                pos.notes.forEach(note => {
+                    ctx.fillStyle = 'rgba(139, 92, 246, 0.12)';
+                    ctx.beginPath();
+                    ctx.roundRect
+                        ? ctx.roundRect(pos.x, note.y - dotR, pos.xEnd - pos.x, dotR * 2, dotR)
+                        : ctx.rect(pos.x, note.y - dotR, pos.xEnd - pos.x, dotR * 2);
+                    ctx.fill();
+                });
+            });
+
+            // Second pass: connecting lines between chord changes (start of next to end of prev at same voice)
+            ctx.lineWidth = 1.5;
             for (let i = 0; i < positions.length - 1; i++) {
                 const curr = positions[i], next = positions[i + 1];
-                const maxVoices = Math.max(curr.notes.length, next.notes.length);
-                for (let v = 0; v < maxVoices; v++) {
-                    if (v < curr.notes.length && v < next.notes.length) {
-                        const grad = ctx.createLinearGradient(curr.x, curr.notes[v].y, next.x, next.notes[v].y);
-                        grad.addColorStop(0, 'rgba(168, 85, 247, 0.7)');
-                        grad.addColorStop(1, 'rgba(139, 92, 246, 0.7)');
+                const voices = Math.min(curr.notes.length, next.notes.length);
+                for (let v = 0; v < voices; v++) {
+                    if (Math.abs(curr.notes[v].y - next.notes[v].y) > 1) {
+                        const grad = ctx.createLinearGradient(curr.xEnd, curr.notes[v].y, next.x, next.notes[v].y);
+                        grad.addColorStop(0, 'rgba(168, 85, 247, 0.6)');
+                        grad.addColorStop(1, 'rgba(139, 92, 246, 0.6)');
                         ctx.strokeStyle = grad;
                         ctx.beginPath();
-                        ctx.moveTo(curr.x, curr.notes[v].y);
+                        ctx.moveTo(curr.xEnd, curr.notes[v].y);
                         ctx.lineTo(next.x, next.notes[v].y);
                         ctx.stroke();
                     }
                 }
             }
-            const dotR = Math.max(3, Math.min(5, rowH / 4));
-            timelineHitTargets = [];
+
+            // Third pass: dots + hit targets
             positions.forEach((pos, chordIdx) => {
                 const chord = pos.chord;
                 pos.notes.forEach((note, voiceIdx) => {
+                    // Start dot
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR + 3, 0, Math.PI * 2);
@@ -835,6 +807,12 @@
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR, 0, Math.PI * 2);
                     ctx.fill();
+                    // End cap dot
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.18)';
+                    ctx.beginPath();
+                    ctx.arc(pos.xEnd, note.y, dotR + 1, 0, Math.PI * 2);
+                    ctx.fill();
+
                     timelineHitTargets.push({
                         x: pos.x, y: note.y, r: dotR + 6,
                         isBass: false,
@@ -1140,7 +1118,228 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
                 drawBassTimeline();
             }, 100);
         });
+
+        // ── Playback Engine ─────────────────────────────────────────────────
+
+        let audioCtx = null;
+        let isPlaying = false;
+        let playbackNodes = [];
+        let playbackLoopId = null;
+        let playbackStartTime = 0;
+        let playbackLoopLength = 0;
+        let cursorAnimId = null;
+
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        // Build a simple impulse reverb
+        function makeReverb(ctx) {
+            const convolver = ctx.createConvolver();
+            const rate = ctx.sampleRate;
+            const length = rate * 3.5;
+            const impulse = ctx.createBuffer(2, length, rate);
+            for (let c = 0; c < 2; c++) {
+                const ch = impulse.getChannelData(c);
+                for (let i = 0; i < length; i++) {
+                    ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.2);
+                }
+            }
+            convolver.buffer = impulse;
+            return convolver;
+        }
+
+        function schedulePlayback() {
+            const ctx = getAudioCtx();
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const secPerBeat = 60 / bpm;
+
+            // Shared reverb + master gain
+            const reverb = makeReverb(ctx);
+            const reverbGain = ctx.createGain();
+            reverbGain.gain.value = 0.45;
+            reverb.connect(reverbGain);
+            reverbGain.connect(ctx.destination);
+
+            const dryGain = ctx.createGain();
+            dryGain.gain.value = 0.55;
+            dryGain.connect(ctx.destination);
+
+            playbackNodes = [reverb, reverbGain, dryGain];
+
+            const totalBeats = progression.reduce((s, c) => s + c.duration, 0);
+            playbackLoopLength = totalBeats * secPerBeat;
+
+            function scheduleLoop(loopStart) {
+                // ── Chords ──
+                let t = loopStart;
+                progression.forEach(chord => {
+                    const dur = chord.duration * secPerBeat;
+                    const attack = Math.min(dur * 0.35, 1.8);
+                    const release = Math.min(dur * 0.4, 2.0);
+
+                    chord.notes.map(noteNameToMidi).forEach(midi => {
+                        const freq = 440 * Math.pow(2, (midi - 69) / 12);
+                        const osc = ctx.createOscillator();
+                        const env = ctx.createGain();
+
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+
+                        // Add a very subtle detune for warmth
+                        osc.detune.value = (Math.random() - 0.5) * 4;
+
+                        env.gain.setValueAtTime(0, t);
+                        env.gain.linearRampToValueAtTime(0.18, t + attack);
+                        env.gain.setValueAtTime(0.18, t + dur - release);
+                        env.gain.linearRampToValueAtTime(0, t + dur);
+
+                        osc.connect(env);
+                        env.connect(dryGain);
+                        env.connect(reverb);
+
+                        osc.start(t);
+                        osc.stop(t + dur + 0.05);
+                        playbackNodes.push(osc, env);
+                    });
+                    t += dur;
+                });
+
+                // ── Bass ──
+                let bt = loopStart;
+                bassLine.forEach(note => {
+                    const dur = note.duration * secPerBeat;
+                    if (!note.rest) {
+                        const freq = 440 * Math.pow(2, (note.midi - 69) / 12);
+                        const osc = ctx.createOscillator();
+                        const env = ctx.createGain();
+
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+
+                        const attack = Math.min(dur * 0.15, 0.3);
+                        const release = Math.min(dur * 0.3, 0.8);
+
+                        env.gain.setValueAtTime(0, bt);
+                        env.gain.linearRampToValueAtTime(0.28, bt + attack);
+                        env.gain.setValueAtTime(0.28, bt + dur - release);
+                        env.gain.linearRampToValueAtTime(0, bt + dur);
+
+                        osc.connect(env);
+                        env.connect(dryGain);
+                        env.connect(reverb);
+
+                        osc.start(bt);
+                        osc.stop(bt + dur + 0.05);
+                        playbackNodes.push(osc, env);
+                    }
+                    bt += dur;
+                });
+            }
+
+            playbackStartTime = ctx.currentTime + 0.1;
+            scheduleLoop(playbackStartTime);
+
+            // Loop: schedule next iteration just before current one ends
+            function checkLoop() {
+                if (!isPlaying) return;
+                if (!document.getElementById('loopPlayback').checked) {
+                    // Stop when current loop finishes
+                    const elapsed = audioCtx.currentTime - playbackStartTime;
+                    if (elapsed >= playbackLoopLength) {
+                        stopPlayback();
+                        return;
+                    }
+                    playbackLoopId = setTimeout(checkLoop, 200);
+                    return;
+                }
+                const elapsed = audioCtx.currentTime - playbackStartTime;
+                const loopsCompleted = Math.floor(elapsed / playbackLoopLength);
+                const nextLoopStart = playbackStartTime + (loopsCompleted + 1) * playbackLoopLength;
+
+                // Schedule 0.5s ahead
+                if (nextLoopStart - audioCtx.currentTime < 0.5) {
+                    scheduleLoop(nextLoopStart);
+                }
+                playbackLoopId = setTimeout(checkLoop, 200);
+            }
+            playbackLoopId = setTimeout(checkLoop, 200);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            clearTimeout(playbackLoopId);
+            cancelAnimationFrame(cursorAnimId);
+
+            playbackNodes.forEach(n => {
+                try { n.stop && n.stop(); } catch(e) {}
+                try { n.disconnect(); } catch(e) {}
+            });
+            playbackNodes = [];
+
+            // Clear cursor
+            drawTimeline();
+
+            const btn = document.getElementById('playBtn');
+            btn.textContent = '▶ Play';
+            btn.classList.remove('playing');
+        }
+
+        function togglePlayback() {
+            if (isPlaying) {
+                stopPlayback();
+                return;
+            }
+            if (progression.length === 0) return;
+
+            isPlaying = true;
+            const btn = document.getElementById('playBtn');
+            btn.textContent = '■ Stop';
+            btn.classList.add('playing');
+
+            getAudioCtx().resume().then(() => {
+                schedulePlayback();
+                animateCursor();
+            });
+        }
+
+        function animateCursor() {
+            if (!isPlaying) return;
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const elapsed = audioCtx.currentTime - playbackStartTime;
+            const looping = document.getElementById('loopPlayback').checked;
+            const progress = looping
+                ? (elapsed % playbackLoopLength) / playbackLoopLength
+                : Math.min(elapsed / playbackLoopLength, 1);
+
+            drawTimeline();
+
+            const x = 10 + progress * (canvas.width - 20);
+            ctx.save();
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(251, 191, 36, 0.6)';
+            ctx.shadowBlur = 8;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+            ctx.restore();
+
+            if (!looping && elapsed >= playbackLoopLength) return; // cursor reached end
+            cursorAnimId = requestAnimationFrame(animateCursor);
+        }
+
+        // Stop playback if progression regenerates
+        const _origGenerate = generateProgression;
+        generateProgression = function() {
+            if (isPlaying) stopPlayback();
+            _origGenerate();
+        };
     </script>
-
-
-</body></html>
+</body>
+</html>
