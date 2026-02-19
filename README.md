@@ -30,6 +30,7 @@ Ambient Composer generates a complete harmonic foundation — chords with intell
 **Playback**
 - In-browser audio preview using sine wave oscillators with reverb
 - Full ADSR envelope controls (Attack, Decay, Sustain, Release) for the chord layer
+- **Sustain Repeated Notes** — when a pitch carries over between chords, it holds as one continuous tone rather than restarting (on by default)
 - BPM slider (20–120, default 60) with optional looping
 - A playhead cursor sweeps across the timeline in sync with playback
 

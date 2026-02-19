@@ -286,7 +286,13 @@
 
             <!-- ADSR Controls -->
             <div style="background:rgba(15,23,42,0.4); border:1px solid rgba(168,85,247,0.2); border-radius:10px; padding:1rem; margin-bottom:1rem;">
-                <div style="font-size:0.75rem; color:rgba(233,213,255,0.5); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Envelope (Chords)</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                    <div style="font-size:0.75rem; color:rgba(233,213,255,0.5); text-transform:uppercase; letter-spacing:0.08em;">Envelope (Chords)</div>
+                    <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:rgba(233,213,255,0.7);">
+                        <input type="checkbox" id="tieNotes" checked>
+                        <label for="tieNotes" style="margin:0; cursor:pointer;">Sustain Repeated Notes</label>
+                    </div>
+                </div>
                 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem;">
                     <div class="control-group">
                         <label>Attack: <span id="attackVal">1.5</span>s</label>
@@ -1235,11 +1241,42 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
                 const peakGain = 0.18;
                 const sustainGain = peakGain * envS;
 
-                // ── Chords ──
-                let t = loopStart;
-                progression.forEach(chord => {
-                    const dur = chord.duration * secPerBeat;
-                    // Clamp A+D+R so they fit within the note duration
+                // ── Chords — optionally tie repeated notes across chord changes ──
+                const tieNotes = document.getElementById('tieNotes').checked;
+                let tiedSegments = [];
+
+                if (tieNotes) {
+                    // Merge consecutive chords that share the same pitch into one held segment
+                    let beatCursor = 0;
+                    progression.forEach(chord => {
+                        chord.notes.map(noteNameToMidi).forEach(midi => {
+                            const existing = tiedSegments.find(
+                                s => s.midi === midi && s.startBeat + s.durBeats === beatCursor
+                            );
+                            if (existing) {
+                                existing.durBeats += chord.duration;
+                            } else {
+                                tiedSegments.push({ midi, startBeat: beatCursor, durBeats: chord.duration });
+                            }
+                        });
+                        beatCursor += chord.duration;
+                    });
+                } else {
+                    // One segment per note per chord — no tying
+                    let beatCursor = 0;
+                    progression.forEach(chord => {
+                        chord.notes.map(noteNameToMidi).forEach(midi => {
+                            tiedSegments.push({ midi, startBeat: beatCursor, durBeats: chord.duration });
+                        });
+                        beatCursor += chord.duration;
+                    });
+                }
+
+                // Schedule one oscillator per tied segment
+                tiedSegments.forEach(seg => {
+                    const t   = loopStart + seg.startBeat * secPerBeat;
+                    const dur = seg.durBeats * secPerBeat;
+
                     const totalEnv = envA + envD + envR;
                     const scale = totalEnv > dur ? dur / totalEnv : 1;
                     const attack  = envA * scale;
@@ -1247,30 +1284,27 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
                     const release = envR * scale;
                     const sustainEnd = Math.max(t + attack + decay, t + dur - release);
 
-                    chord.notes.map(noteNameToMidi).forEach(midi => {
-                        const freq = 440 * Math.pow(2, (midi - 69) / 12);
-                        const osc = ctx.createOscillator();
-                        const env = ctx.createGain();
+                    const freq = 440 * Math.pow(2, (seg.midi - 69) / 12);
+                    const osc = ctx.createOscillator();
+                    const env = ctx.createGain();
 
-                        osc.type = 'sine';
-                        osc.frequency.value = freq;
-                        osc.detune.value = (Math.random() - 0.5) * 4;
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    osc.detune.value = (Math.random() - 0.5) * 4;
 
-                        env.gain.setValueAtTime(0, t);
-                        env.gain.linearRampToValueAtTime(peakGain, t + attack);           // Attack
-                        env.gain.linearRampToValueAtTime(sustainGain, t + attack + decay); // Decay → Sustain
-                        env.gain.setValueAtTime(sustainGain, sustainEnd);                  // Hold sustain
-                        env.gain.linearRampToValueAtTime(0, t + dur);                      // Release
+                    env.gain.setValueAtTime(0, t);
+                    env.gain.linearRampToValueAtTime(peakGain, t + attack);
+                    env.gain.linearRampToValueAtTime(sustainGain, t + attack + decay);
+                    env.gain.setValueAtTime(sustainGain, sustainEnd);
+                    env.gain.linearRampToValueAtTime(0, t + dur);
 
-                        osc.connect(env);
-                        env.connect(dryGain);
-                        env.connect(reverb);
+                    osc.connect(env);
+                    env.connect(dryGain);
+                    env.connect(reverb);
 
-                        osc.start(t);
-                        osc.stop(t + dur + 0.05);
-                        playbackNodes.push(osc, env);
-                    });
-                    t += dur;
+                    osc.start(t);
+                    osc.stop(t + dur + 0.05);
+                    playbackNodes.push(osc, env);
                 });
 
                 // ── Bass ──
