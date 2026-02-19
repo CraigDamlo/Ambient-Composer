@@ -853,55 +853,82 @@
             if (bassLine.length > 0) {
                 const bassTotalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
                 let bx = padding;
-                const bassPoints = [];
 
+                // First pass: sustain bars
+                bassLine.forEach(note => {
+                    const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
+                    if (!note.rest) {
+                        const by = toY(note.midi);
+                        ctx.fillStyle = 'rgba(14, 165, 233, 0.12)';
+                        ctx.beginPath();
+                        ctx.roundRect
+                            ? ctx.roundRect(bx, by - dotR, bw, dotR * 2, dotR)
+                            : ctx.rect(bx, by - dotR, bw, dotR * 2);
+                        ctx.fill();
+                    }
+                    bx += bw;
+                });
+
+                // Second pass: connecting lines between notes (end of one to start of next)
+                const bassSegments = [];
+                bx = padding;
+                bassLine.forEach(note => {
+                    const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
+                    if (!note.rest) bassSegments.push({ x: bx, xEnd: bx + bw, y: toY(note.midi) });
+                    bx += bw;
+                });
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < bassSegments.length - 1; i++) {
+                    const curr = bassSegments[i], next = bassSegments[i + 1];
+                    if (Math.abs(curr.y - next.y) > 1) {
+                        const grad = ctx.createLinearGradient(curr.xEnd, curr.y, next.x, next.y);
+                        grad.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
+                        grad.addColorStop(1, 'rgba(14, 165, 233, 0.6)');
+                        ctx.strokeStyle = grad;
+                        ctx.beginPath();
+                        ctx.moveTo(curr.xEnd, curr.y);
+                        ctx.lineTo(next.x, next.y);
+                        ctx.stroke();
+                    }
+                }
+
+                // Third pass: dots, labels, hit targets
+                bx = padding;
                 bassLine.forEach((note, bassIdx) => {
                     const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
                     if (!note.rest) {
                         const by = toY(note.midi);
-                        bassPoints.push({ x: bx + 4, y: by });
 
-                        ctx.fillStyle = 'rgba(14, 165, 233, 0.12)';
+                        // Start dot
+                        ctx.fillStyle = 'rgba(14, 165, 233, 0.3)';
                         ctx.beginPath();
-                        ctx.arc(bx + 4, by, dotR + 6, 0, Math.PI * 2);
+                        ctx.arc(bx, by, dotR + 3, 0, Math.PI * 2);
                         ctx.fill();
-
-                        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-                        ctx.lineWidth = 1.5;
-                        ctx.beginPath();
-                        ctx.arc(bx + 4, by, dotR + 3, 0, Math.PI * 2);
-                        ctx.stroke();
-
                         ctx.fillStyle = '#38bdf8';
                         ctx.beginPath();
-                        ctx.arc(bx + 4, by, dotR, 0, Math.PI * 2);
+                        ctx.arc(bx, by, dotR, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // End cap dot
+                        ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+                        ctx.beginPath();
+                        ctx.arc(bx + bw, by, dotR + 1, 0, Math.PI * 2);
                         ctx.fill();
 
                         if (rowH >= 16) {
                             ctx.fillStyle = 'rgba(125, 211, 252, 0.75)';
                             ctx.font = `${Math.max(8, rowH - 6)}px monospace`;
-                            ctx.fillText(midiToNote(note.midi), bx + 14, by + 4);
+                            ctx.fillText(midiToNote(note.midi), bx + dotR + 6, by + 4);
                         }
 
                         timelineHitTargets.push({
-                            x: bx + 4, y: by, r: dotR + 8,
+                            x: bx, y: by, r: dotR + 8,
                             isBass: true,
                             label: `Bass  •  ${midiToNote(note.midi)}\n${note.type}  •  ${note.duration} beat${note.duration !== 1 ? 's' : ''}`
                         });
                     }
                     bx += bw;
                 });
-
-                if (bassPoints.length > 1) {
-                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-                    ctx.lineWidth = 1.5;
-                    ctx.setLineDash([4, 3]);
-                    ctx.beginPath();
-                    ctx.moveTo(bassPoints[0].x, bassPoints[0].y);
-                    bassPoints.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
             }
 
             // ── Labels & grid ──
