@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
+<!-- saved from url=(0060)file:///Users/Craig/Downloads/ambient-chord-generator_1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ambient Chord Generator</title>
     <style>
@@ -33,6 +33,7 @@
         }
         .btn-primary { background: #9333ea; color: white; }
         .btn-secondary { background: #16a34a; color: white; }
+        .btn-midi { background: #0369a1; color: white; }
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .control-group { display: flex; flex-direction: column; }
         label { font-size: 0.875rem; margin-bottom: 0.5rem; }
@@ -135,6 +136,14 @@
             <div>
                 <button class="btn-primary" onclick="generateProgression()">↻ Generate New</button>
                 <button class="btn-secondary" onclick="exportProgression()">📋 Copy to Clipboard</button>
+                <button class="btn-midi" onclick="exportMidi()">⬇ Download MIDI</button>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:1rem; margin-top:1rem;">
+                <div class="control-group" style="flex-direction:row; align-items:center; gap:0.75rem; margin:0;">
+                    <label style="margin:0; white-space:nowrap;">BPM: <span id="bpmVal">60</span></label>
+                    <input type="range" id="bpm" min="20" max="120" value="60" style="width:140px;" oninput="document.getElementById(&#39;bpmVal&#39;).textContent=this.value">
+                </div>
             </div>
 
             <div class="controls">
@@ -164,21 +173,19 @@
                 </div>
                 <div class="control-group">
                     <label>Length: <span id="lengthVal">4</span></label>
-                    <input type="range" id="length" min="2" max="8" value="4" 
-                           oninput="document.getElementById('lengthVal').textContent=this.value; generateProgression()">
+                    <input type="range" id="length" min="2" max="8" value="4" oninput="document.getElementById(&#39;lengthVal&#39;).textContent=this.value; generateProgression()">
                 </div>
                 <div class="control-group">
                     <label>Change Rate: <span id="rateVal">4</span> beats</label>
-                    <input type="range" id="rate" min="2" max="16" step="2" value="4"
-                           oninput="document.getElementById('rateVal').textContent=this.value; generateProgression()">
+                    <input type="range" id="rate" min="2" max="16" step="2" value="4" oninput="document.getElementById(&#39;rateVal&#39;).textContent=this.value; generateProgression()">
                 </div>
             </div>
 
-            <div id="voicingFixed" class="control-group" style="margin-bottom: 1rem; display: none;">
+            <div id="voicingFixed" class="control-group" style="margin-bottom: 1rem; display: block;">
                 <label>Fixed Voicing Type</label>
                 <select id="fixedVoicing" onchange="generateProgression()">
                     <option value="triad">Triad (3 notes)</option>
-                    <option value="seventh" selected>7th (4 notes)</option>
+                    <option value="seventh" selected="">7th (4 notes)</option>
                     <option value="ninth">9th (5 notes)</option>
                     <option value="eleventh">11th (6 notes)</option>
                 </select>
@@ -186,26 +193,68 @@
 
             <div id="voicingVaried" class="control-group" style="margin-bottom: 1rem; display: none;">
                 <label>Voicing Complexity: <span id="varietyVal">50</span>%</label>
-                <input type="range" id="variety" min="0" max="1" step="0.1" value="0.5"
-                       oninput="document.getElementById('varietyVal').textContent=Math.round(this.value*100); generateProgression()">
+                <input type="range" id="variety" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById(&#39;varietyVal&#39;).textContent=Math.round(this.value*100); generateProgression()">
             </div>
 
             <div class="control-group" style="margin-bottom: 1rem;">
                 <label>Timing Complexity: <span id="complexityVal">30</span>%</label>
-                <input type="range" id="complexity" min="0" max="1" step="0.1" value="0.3"
-                       oninput="document.getElementById('complexityVal').textContent=Math.round(this.value*100); generateProgression()">
+                <input type="range" id="complexity" min="0" max="1" step="0.1" value="0.3" oninput="document.getElementById(&#39;complexityVal&#39;).textContent=Math.round(this.value*100); generateProgression()">
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <input type="checkbox" id="inversions" checked onchange="generateProgression()">
+                <input type="checkbox" id="inversions" checked="" onchange="generateProgression()">
                 <label for="inversions">Smart Inversions (smooth voice leading and loops)</label>
             </div>
         </div>
 
         <div class="card">
             <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Current Progression</h2>
-            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
-            <div id="progressionList"></div>
+            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(34, 197, 94, 0.2); border-radius: 8px;"><strong>Loop Quality: Excellent ✓</strong><br>Average distance: 1.0 semitones (very smooth loop)<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">Voice 1: 2 semitones • Voice 2: 0 semitones • Voice 3: 0 semitones • Voice 4: 2 semitones</span></div>
+            <div id="progressionList">
+                <div class="chord-item">
+                    <div>
+                        <span class="chord-name">I</span>
+                        <span style="color: #d8b4fe; margin-left: 1rem;">B3 - C4 - E4 - G4</span>
+                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
+                            (seventh, 3rd inv)
+                        </span>
+                    </div>
+                    <div style="font-family: monospace; color: #d8b4fe;">2 beats</div>
+                </div>
+            
+                <div class="chord-item">
+                    <div>
+                        <span class="chord-name">V</span>
+                        <span style="color: #d8b4fe; margin-left: 1rem;">B3 - D4 - F4 - G4</span>
+                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
+                            (seventh, 1st inv)
+                        </span>
+                    </div>
+                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
+                </div>
+            
+                <div class="chord-item">
+                    <div>
+                        <span class="chord-name">vi</span>
+                        <span style="color: #d8b4fe; margin-left: 1rem;">A3 - C4 - E4 - G4</span>
+                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
+                            (seventh, root inv)
+                        </span>
+                    </div>
+                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
+                </div>
+            
+                <div class="chord-item">
+                    <div>
+                        <span class="chord-name">IV</span>
+                        <span style="color: #d8b4fe; margin-left: 1rem;">A3 - C4 - E4 - F4</span>
+                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
+                            (seventh, 1st inv)
+                        </span>
+                    </div>
+                    <div style="font-family: monospace; color: #d8b4fe;">4 beats</div>
+                </div>
+            </div>
         </div>
 
         <!-- BASS LINE CARD -->
@@ -230,19 +279,17 @@
                     <label>Bass Octave</label>
                     <select id="bassOctave" onchange="generateBassLine()">
                         <option value="1">Octave 1 (very deep)</option>
-                        <option value="2" selected>Octave 2 (deep)</option>
+                        <option value="2" selected="">Octave 2 (deep)</option>
                         <option value="3">Octave 3 (mid-bass)</option>
                     </select>
                 </div>
                 <div class="control-group">
                     <label>Bass Density: <span id="densityVal">50</span>%</label>
-                    <input type="range" id="bassDensity" min="0" max="1" step="0.1" value="0.5"
-                           oninput="document.getElementById('densityVal').textContent=Math.round(this.value*100); generateBassLine()">
+                    <input type="range" id="bassDensity" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById(&#39;densityVal&#39;).textContent=Math.round(this.value*100); generateBassLine()">
                 </div>
                 <div class="control-group">
                     <label>Syncopation: <span id="syncoVal">20</span>%</label>
-                    <input type="range" id="bassSynco" min="0" max="1" step="0.1" value="0.2"
-                           oninput="document.getElementById('syncoVal').textContent=Math.round(this.value*100); generateBassLine()">
+                    <input type="range" id="bassSynco" min="0" max="1" step="0.1" value="0.2" oninput="document.getElementById(&#39;syncoVal&#39;).textContent=Math.round(this.value*100); generateBassLine()">
                 </div>
             </div>
 
@@ -254,13 +301,37 @@
                 <label for="bassOctaveJumps">Octave jumps</label>
             </div>
 
-            <div id="bassNoteContainer"></div>
+            <div id="bassNoteContainer">
+                <div class="bass-note-item" style="">
+                    <span class="bass-note-name">C2</span>
+                    <span class="bass-note-dur">2b</span>
+                    <span class="bass-note-type">root</span>
+                </div>
+            
+                <div class="bass-note-item" style="">
+                    <span class="bass-note-name">G2</span>
+                    <span class="bass-note-dur">4b</span>
+                    <span class="bass-note-type">root</span>
+                </div>
+            
+                <div class="bass-note-item" style="">
+                    <span class="bass-note-name">A2</span>
+                    <span class="bass-note-dur">4b</span>
+                    <span class="bass-note-type">root</span>
+                </div>
+            
+                <div class="bass-note-item" style="">
+                    <span class="bass-note-name">F2</span>
+                    <span class="bass-note-dur">4b</span>
+                    <span class="bass-note-type">root</span>
+                </div>
+            </div>
 
             <div class="section-divider"></div>
 
             <div id="bassTimeline" style="background: rgba(15, 23, 42, 0.8); border-radius: 8px; padding: 1.5rem; padding-left: 70px;">
                 <div id="bassTimelineInner" style="position: relative; width: 100%; height: 120px;">
-                    <canvas id="bassCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
+                    <canvas id="bassCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;" width="1040" height="120"></canvas>
                 </div>
             </div>
         </div>
@@ -272,9 +343,9 @@
                 <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#38bdf8;margin-right:5px;vertical-align:middle;"></span>Bass</span>
             </div>
             <div class="timeline-wrapper">
-                <div id="timeline">
-                    <canvas id="canvas"></canvas>
-                </div>
+                <div id="timeline" style="height: 476px;">
+                    <canvas id="canvas" width="1040" height="476"></canvas>
+                <div class="note-labels"><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C4</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C3</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">A#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">A2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">G#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">G2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">F#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">F2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">E2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D#2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">D2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">C#2</div><div style="color: rgb(125, 211, 252); font-size: 8px; font-family: monospace; line-height: 14px;">C2</div><div style="color: rgb(216, 180, 254); font-size: 8px; font-family: monospace; line-height: 14px;">B1</div></div><div class="grid-line" style="top: 0px;"></div><div class="grid-line" style="top: 14.4242px;"></div><div class="grid-line" style="top: 28.8485px;"></div><div class="grid-line" style="top: 43.2727px;"></div><div class="grid-line" style="top: 57.697px;"></div><div class="grid-line" style="top: 72.1212px;"></div><div class="grid-line" style="top: 86.5455px;"></div><div class="grid-line" style="top: 100.97px;"></div><div class="grid-line" style="top: 115.394px;"></div><div class="grid-line" style="top: 129.818px;"></div><div class="grid-line" style="top: 144.242px;"></div><div class="grid-line" style="top: 158.667px;"></div><div class="grid-line" style="top: 173.091px;"></div><div class="grid-line" style="top: 187.515px;"></div><div class="grid-line" style="top: 201.939px;"></div><div class="grid-line" style="top: 216.364px;"></div><div class="grid-line" style="top: 230.788px;"></div><div class="grid-line" style="top: 245.212px;"></div><div class="grid-line" style="top: 259.636px;"></div><div class="grid-line" style="top: 274.061px;"></div><div class="grid-line" style="top: 288.485px;"></div><div class="grid-line" style="top: 302.909px;"></div><div class="grid-line" style="top: 317.333px;"></div><div class="grid-line" style="top: 331.758px;"></div><div class="grid-line" style="top: 346.182px;"></div><div class="grid-line" style="top: 360.606px;"></div><div class="grid-line" style="top: 375.03px;"></div><div class="grid-line" style="top: 389.455px;"></div><div class="grid-line" style="top: 403.879px;"></div><div class="grid-line" style="top: 418.303px;"></div><div class="grid-line" style="top: 432.727px;"></div><div class="grid-line" style="top: 447.152px;"></div><div class="grid-line" style="top: 461.576px;"></div><div class="grid-line" style="top: 476px;"></div></div>
             </div>
         </div>
     </div>
@@ -883,7 +954,131 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
         updateVoicingControls();
         generateProgression();
 
-        // ── Timeline tooltip on hover ──
+        // ── MIDI Export ─────────────────────────────────────────────────────
+
+        function exportMidi() {
+            if (progression.length === 0) return;
+
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const PPQ = 480; // pulses per quarter note
+            const uspb = Math.round(60_000_000 / bpm); // microseconds per beat
+
+            // ── Helpers to write MIDI bytes ──────────────────────────────────
+
+            function varLen(n) {
+                // Encode n as MIDI variable-length quantity
+                const bytes = [];
+                bytes.push(n & 0x7F);
+                n >>= 7;
+                while (n > 0) { bytes.unshift((n & 0x7F) | 0x80); n >>= 7; }
+                return bytes;
+            }
+
+            function word16(n) { return [(n >> 8) & 0xFF, n & 0xFF]; }
+            function word32(n) { return [(n >> 24) & 0xFF, (n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF]; }
+
+            function makeTrack(events) {
+                // events: [{ tick, type, data[] }]  sorted by tick
+                events.sort((a, b) => a.tick - b.tick);
+
+                const body = [];
+                let cursor = 0;
+                events.forEach(ev => {
+                    const delta = ev.tick - cursor;
+                    cursor = ev.tick;
+                    body.push(...varLen(delta), ...ev.data);
+                });
+                // End of track
+                body.push(0x00, 0xFF, 0x2F, 0x00);
+
+                return [
+                    0x4D, 0x54, 0x72, 0x6B,   // "MTrk"
+                    ...word32(body.length),
+                    ...body
+                ];
+            }
+
+            // ── Track 0: Tempo map ───────────────────────────────────────────
+
+            const tempoTrack = makeTrack([
+                { tick: 0, data: [0xFF, 0x51, 0x03, ...[(uspb >> 16) & 0xFF, (uspb >> 8) & 0xFF, uspb & 0xFF]] },
+                { tick: 0, data: [0xFF, 0x03, ...stringBytes('Ambient Composer')] },
+            ]);
+
+            function stringBytes(s) {
+                const b = [];
+                for (let i = 0; i < s.length; i++) b.push(s.charCodeAt(i));
+                return [...varLen(b.length), ...b];
+            }
+
+            // ── Track 1: Chords (channel 0) ──────────────────────────────────
+
+            const chordEvents = [];
+            const chordVelocity = 80;
+            let tick = 0;
+
+            progression.forEach(chord => {
+                const durationTicks = chord.duration * PPQ;
+                const midiNotes = chord.notes.map(noteNameToMidi);
+
+                midiNotes.forEach(midi => {
+                    chordEvents.push({ tick, data: [0x90, midi, chordVelocity] });           // note on  ch1
+                    chordEvents.push({ tick: tick + durationTicks - 1, data: [0x80, midi, 0] }); // note off ch1
+                });
+                tick += durationTicks;
+            });
+
+            // Track name
+            chordEvents.push({ tick: 0, data: [0xFF, 0x03, ...stringBytes('Chords')] });
+
+            const chordTrack = makeTrack(chordEvents);
+
+            // ── Track 2: Bass (channel 1) ────────────────────────────────────
+
+            const bassEvents = [];
+            const bassVelocity = 95;
+            tick = 0;
+
+            bassLine.forEach(note => {
+                const durationTicks = note.duration * PPQ;
+                if (!note.rest) {
+                    bassEvents.push({ tick, data: [0x91, note.midi, bassVelocity] });
+                    bassEvents.push({ tick: tick + durationTicks - 1, data: [0x81, note.midi, 0] });
+                }
+                tick += durationTicks;
+            });
+
+            bassEvents.push({ tick: 0, data: [0xFF, 0x03, ...stringBytes('Bass')] });
+            // Channel 1 program change → Electric Bass (finger) = patch 33
+            bassEvents.push({ tick: 0, data: [0xC1, 33] });
+
+            const bassTrack = makeTrack(bassEvents);
+
+            // ── Assemble MIDI file ───────────────────────────────────────────
+
+            const numTracks = 3;
+            const header = [
+                0x4D, 0x54, 0x68, 0x64,  // "MThd"
+                0x00, 0x00, 0x00, 0x06,  // chunk length = 6
+                0x00, 0x01,              // format 1 (multi-track)
+                ...word16(numTracks),
+                ...word16(PPQ),
+            ];
+
+            const midi = new Uint8Array([...header, ...tempoTrack, ...chordTrack, ...bassTrack]);
+
+            // ── Trigger download ─────────────────────────────────────────────
+
+            const key  = document.getElementById('key').value;
+            const mode = document.getElementById('mode').value;
+            const blob = new Blob([midi], { type: 'audio/midi' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `ambient-${key}-${mode}-${bpm}bpm.mid`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
         (function() {
             const tooltip = document.getElementById('timeline-tooltip');
             const canvas = document.getElementById('canvas');
@@ -946,5 +1141,6 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
             }, 100);
         });
     </script>
-</body>
-</html>
+
+
+</body></html>
