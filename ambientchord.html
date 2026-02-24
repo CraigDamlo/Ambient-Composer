@@ -114,29 +114,6 @@
             z-index: 100;
         }
         #timeline-tooltip.visible { opacity: 1; }
-
-        /* Bass line styles */
-        .bass-note-item {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0.6rem 0.8rem;
-            background: rgba(30, 64, 115, 0.5);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 8px;
-            margin: 0.25rem;
-            font-family: monospace;
-            min-width: 60px;
-        }
-        .bass-note-name { font-size: 1.1rem; font-weight: bold; color: #7dd3fc; }
-        .bass-note-dur { font-size: 0.75rem; color: rgba(125, 211, 252, 0.6); margin-top: 2px; }
-        .bass-note-type { font-size: 0.7rem; color: rgba(125, 211, 252, 0.45); }
-        #bassNoteContainer { display: flex; flex-wrap: wrap; margin-top: 0.75rem; }
-        .section-divider {
-            height: 1px;
-            background: rgba(168, 85, 247, 0.2);
-            margin: 1.5rem 0;
-        }
     </style>
 </head>
 <body>
@@ -293,14 +270,6 @@
             </div>
 
             <div id="bassNoteContainer"></div>
-
-            <div class="section-divider"></div>
-
-            <div id="bassTimeline" style="background: rgba(15, 23, 42, 0.8); border-radius: 8px; padding: 1.5rem; padding-left: 70px;">
-                <div id="bassTimelineInner" style="position: relative; width: 100%; height: 120px;">
-                    <canvas id="bassCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
-                </div>
-            </div>
         </div>
 
         <div class="card">
@@ -625,102 +594,17 @@
             });
 
             displayBassLine();
-            drawBassTimeline();
             drawTimeline(); // redraw combined view
         }
 
         function displayBassLine() {
             const container = document.getElementById('bassNoteContainer');
-            container.innerHTML = bassLine.map(n => `
-                <div class="bass-note-item" style="${n.rest ? 'opacity:0.4;' : ''}">
-                    <span class="bass-note-name">${n.rest ? '—' : midiToNote(n.midi)}</span>
-                    <span class="bass-note-dur">${n.duration}b</span>
-                    <span class="bass-note-type">${n.rest ? 'rest' : n.type}</span>
-                </div>
-            `).join('');
-        }
-
-        function drawBassTimeline() {
-            const canvas = document.getElementById('bassCanvas');
-            const ctx = canvas.getContext('2d');
-            const container = document.getElementById('bassTimelineInner');
-            const width = container.clientWidth || 800;
-            const height = 120;
-            canvas.width = width;
-            canvas.height = height;
-            ctx.clearRect(0, 0, width, height);
-
-            if (bassLine.length === 0) return;
-
-            const totalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
-            const activeMidi = bassLine.filter(n => !n.rest).map(n => n.midi);
-            if (activeMidi.length === 0) return;
-
-            const minNote = Math.min(...activeMidi) - 1;
-            const maxNote = Math.max(...activeMidi) + 1;
-            const noteRange = maxNote - minNote || 1;
-
-            const padding = 10;
-            let x = padding;
-
-            bassLine.forEach((note, i) => {
-                const w = (note.duration / totalBeats) * (width - padding * 2);
-
-                if (!note.rest) {
-                    const y = ((maxNote - note.midi) / noteRange) * (height - 20) + 10;
-                    // Draw block
-                    ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
-                    ctx.fillRect(x + 1, y - 8, w - 2, 16);
-                    // Draw line
-                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + w, y);
-                    ctx.stroke();
-                    // Dot
-                    ctx.fillStyle = '#38bdf8';
-                    ctx.beginPath();
-                    ctx.arc(x + 4, y, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    // Label
-                    ctx.fillStyle = 'rgba(125, 211, 252, 0.85)';
-                    ctx.font = '10px monospace';
-                    ctx.fillText(midiToNote(note.midi), x + 10, y + 4);
-                } else {
-                    // Rest - dashed line
-                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([3, 4]);
-                    ctx.beginPath();
-                    ctx.moveTo(x, height / 2);
-                    ctx.lineTo(x + w, height / 2);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-
-                x += w;
-            });
-
-            // Connect non-rest notes with faint lines
-            const notePositions = [];
-            let cx = padding;
-            bassLine.forEach(note => {
-                const w = (note.duration / totalBeats) * (width - padding * 2);
-                if (!note.rest) {
-                    const y = ((maxNote - note.midi) / noteRange) * (height - 20) + 10;
-                    notePositions.push({ x: cx + 4, y });
-                }
-                cx += w;
-            });
-            if (notePositions.length > 1) {
-                ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(notePositions[0].x, notePositions[0].y);
-                notePositions.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-                ctx.stroke();
-            }
+            container.innerHTML = `<div style="font-family: monospace; font-size: 1rem; color: #7dd3fc; line-height: 2; letter-spacing: 0.02em; flex-wrap: wrap; display: flex; gap: 0.5rem;">` +
+                bassLine.map(n => {
+                    if (n.rest) return `<span style="color: rgba(125,211,252,0.35);">— (${n.duration})</span>`;
+                    return `<span style="background: rgba(14,165,233,0.12); border: 1px solid rgba(56,189,248,0.25); border-radius: 6px; padding: 0.2rem 0.5rem;">${midiToNote(n.midi)} <span style="color:rgba(125,211,252,0.55); font-size:0.85em;">(${n.duration})</span></span>`;
+                }).join('') +
+            `</div>`;
         }
 
         // ─── CHORD PROGRESSION ──────────────────────────────────────────────
@@ -1287,7 +1171,6 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
                 drawTimeline();
-                drawBassTimeline();
             }, 100);
         });
 
