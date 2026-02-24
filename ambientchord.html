@@ -215,21 +215,10 @@
                 <input type="checkbox" id="inversions" checked onchange="generateProgression()">
                 <label for="inversions">Smart Inversions (smooth voice leading and loops)</label>
             </div>
-        </div>
 
-        <div class="card">
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Current Progression</h2>
-            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
-            <div id="progressionList"></div>
-        </div>
+            <div style="height:1px; background:rgba(168,85,247,0.2); margin:1.5rem 0;"></div>
 
-        <!-- BASS LINE CARD -->
-        <div class="card">
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">Bass Line</h2>
-            <p style="color: rgba(125, 211, 252, 0.7); font-size: 0.875rem; margin-bottom: 1.25rem;">
-                Auto-generated bass following the chord progression
-            </p>
-
+            <div style="font-size:0.75rem; color:rgba(233,213,255,0.5); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Bass Line</div>
             <div class="controls">
                 <div class="control-group">
                     <label>Bass Style</label>
@@ -261,14 +250,22 @@
                 </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <input type="checkbox" id="bassRests" onchange="generateBassLine()">
                 <label for="bassRests">Include rests</label>
                 &nbsp;&nbsp;
                 <input type="checkbox" id="bassOctaveJumps" onchange="generateBassLine()">
                 <label for="bassOctaveJumps">Octave jumps</label>
             </div>
+        </div>
 
+        <div class="card">
+            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Chord Progression</h2>
+            <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
+            <div id="progressionList"></div>
+
+            <div style="height:1px; background:rgba(56,189,248,0.2); margin:1.25rem 0;"></div>
+            <div style="font-size:0.75rem; color:rgba(125,211,252,0.5); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Bass Line</div>
             <div id="bassNoteContainer"></div>
         </div>
 
