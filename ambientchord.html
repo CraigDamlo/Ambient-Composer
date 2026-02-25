@@ -49,6 +49,23 @@
         }
         .mood-btn:hover { border-color: rgba(168, 85, 247, 0.7); color: #e9d5ff; }
         .mood-btn.active { background: rgba(147, 51, 234, 0.4); border-color: #9333ea; color: #e9d5ff; }
+        .key-btn {
+            padding: 0.3rem 0.55rem;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 5px;
+            background: rgba(30, 27, 75, 0.4);
+            color: rgba(233, 213, 255, 0.4);
+            font-size: 0.78rem;
+            font-family: monospace;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-width: 2.2rem;
+            text-align: center;
+        }
+        .key-btn:hover { border-color: rgba(168,85,247,0.6); color: #e9d5ff; }
+        .key-btn.recommended { border-color: rgba(168,85,247,0.5); color: #e9d5ff; background: rgba(88,28,135,0.3); }
+        .key-btn.selected { border-color: #f0abfc; background: rgba(217,70,239,0.6); color: #fff; font-weight: 700; box-shadow: 0 0 8px rgba(240,171,252,0.5); }
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
         .control-group { display: flex; flex-direction: column; }
         label { font-size: 0.875rem; margin-bottom: 0.5rem; }
@@ -153,14 +170,17 @@
             </div>
 
             <div class="controls">
-                <div class="control-group">
-                    <label>Key</label>
-                    <select id="key" onchange="generateProgression()">
-                        <option>C</option><option>C#</option><option>D</option><option>D#</option>
-                        <option>E</option><option>F</option><option>F#</option><option>G</option>
-                        <option>G#</option><option>A</option><option>A#</option><option>B</option>
-                    </select>
+            <div class="control-group" style="grid-column: 1 / -1;">
+                <label>Key <span id="keyRecommendNote" style="font-size:0.7rem; color:rgba(233,213,255,0.4); font-weight:400; margin-left:0.5rem;">highlighted = recommended for current tone</span></label>
+                <div id="keyGrid" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.35rem;">
                 </div>
+                <!-- Hidden select keeps existing code working -->
+                <select id="key" style="display:none;" onchange="generateProgression()">
+                    <option>C</option><option>C#</option><option>D</option><option>D#</option>
+                    <option>E</option><option>F</option><option>F#</option><option>G</option>
+                    <option>G#</option><option>A</option><option>A#</option><option>B</option>
+                </select>
+            </div>
                 <div class="control-group">
                     <label>Mode</label>
                     <select id="mode" onchange="generateProgression()">
@@ -459,12 +479,19 @@
                 document.getElementById('tone' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tone)
             );
             if (isPlaying) stopPlayback();
+            renderKeyGrid();
             applyMoodPresets();
         }
 
         function applyMoodPresets() {
             const tp = tempoPresets[currentTempo];
             const tn = tonePresets[currentTone];
+
+            // Pick a key weighted by tone
+            const keyPool = keysByTone[currentTone];
+            const randomKey = keyPool[Math.floor(Math.random() * keyPool.length)];
+            document.getElementById('key').value = randomKey;
+            renderKeyGrid(randomKey);
 
             // BPM
             document.getElementById('bpm').value = tp.bpm;
@@ -508,6 +535,33 @@
             const mode = document.getElementById('voicingMode').value;
             document.getElementById('voicingFixed').style.display = mode === 'fixed' ? 'block' : 'none';
             document.getElementById('voicingVaried').style.display = mode === 'varied' ? 'block' : 'none';
+        }
+
+        const allKeys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        const keysByTone = {
+            dark:    ['C', 'D', 'F', 'G', 'A#', 'D#', 'G#'],
+            neutral: ['D', 'A', 'E', 'G', 'C', 'B'],
+            bright:  ['C', 'G', 'D', 'A', 'E', 'F'],
+        };
+
+        function renderKeyGrid(selectedKey) {
+            const grid = document.getElementById('keyGrid');
+            const tone = currentTone;
+            const recommended = keysByTone[tone];
+            const current = selectedKey || document.getElementById('key').value;
+
+            grid.innerHTML = allKeys.map(k => {
+                const isRec = recommended.includes(k);
+                const isSel = k === current;
+                return `<button class="key-btn${isRec ? ' recommended' : ''}${isSel ? ' selected' : ''}"
+                    onclick="selectKey('${k}')">${k}</button>`;
+            }).join('');
+        }
+
+        function selectKey(key) {
+            document.getElementById('key').value = key;
+            renderKeyGrid(key);
+            generateProgression();
         }
 
         // ─── BASS LINE GENERATION ───────────────────────────────────────────
@@ -1035,7 +1089,8 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
         }
 
         updateVoicingControls();
-        applyMoodPresets(); // applies slow + dark defaults and generates
+        renderKeyGrid('C');
+        applyMoodPresets();
 
         // ── MIDI Export ─────────────────────────────────────────────────────
 
