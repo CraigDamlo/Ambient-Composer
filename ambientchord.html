@@ -264,12 +264,18 @@
         </div>
 
         <div class="card">
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Chord Progression</h2>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                <h2 style="font-size: 1.5rem; font-weight: bold; margin:0;">Chord Progression</h2>
+                <span id="chordBeatCount" style="font-family:monospace; font-size:0.8rem; color:rgba(216,180,254,0.5);"></span>
+            </div>
             <div id="loopQuality" style="margin-bottom: 1rem; padding: 1rem; background: rgba(168, 85, 247, 0.1); border-radius: 8px;"></div>
             <div id="progressionList"></div>
 
             <div style="height:1px; background:rgba(56,189,248,0.2); margin:1.25rem 0;"></div>
-            <div style="font-size:0.75rem; color:rgba(125,211,252,0.5); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Bass Line</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                <div style="font-size:0.75rem; color:rgba(125,211,252,0.5); text-transform:uppercase; letter-spacing:0.08em;">Bass Line</div>
+                <span id="bassBeatCount" style="font-family:monospace; font-size:0.8rem; color:rgba(125,211,252,0.5);"></span>
+            </div>
             <div id="bassNoteContainer"></div>
         </div>
 
@@ -603,6 +609,8 @@
 
         function displayBassLine() {
             const container = document.getElementById('bassNoteContainer');
+            const totalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
+            document.getElementById('bassBeatCount').textContent = `${totalBeats} beats total`;
             container.innerHTML = `<div style="font-family: monospace; font-size: 1rem; color: #7dd3fc; line-height: 2; letter-spacing: 0.02em; flex-wrap: wrap; display: flex; gap: 0.5rem;">` +
                 bassLine.map(n => {
                     if (n.rest) return `<span style="color: rgba(125,211,252,0.35);">— (${n.duration})</span>`;
@@ -699,6 +707,8 @@
         function displayProgression() {
             const list = document.getElementById('progressionList');
             const useInv = document.getElementById('inversions').checked;
+            const totalBeats = progression.reduce((s, c) => s + c.duration, 0);
+            document.getElementById('chordBeatCount').textContent = `${totalBeats} beats total`;
             list.innerHTML = progression.map(c => `
                 <div class="chord-item">
                     <div>
