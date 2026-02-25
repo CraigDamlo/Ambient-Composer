@@ -18,28 +18,33 @@ Ambient Composer generates a complete harmonic foundation — chords with intell
 - Individual settings can still be tweaked freely after picking a mood
 
 **Chord Progressions**
-- Choose a key, mode (Major / Minor / Dorian), and progression length
+- Key selector shows all 12 keys as a button grid — keys recommended for the current tone are highlighted, all others remain available
+- Choose mode (Major / Minor / Dorian) and progression length
 - Voicing modes: Fixed, Varied, or Random — from triads up to 11th chords
 - Smart Inversions minimize voice movement between chords and across the loop boundary
-- Loop quality score shows how smoothly the progression wraps
+- Loop quality score (Excellent / Good / Fair) shows how smoothly the progression wraps back to the start
 
 **Bass Line**
 - Five styles: Root Only, Root + Fifth, Walking, Arpeggiated, Pedal Point
 - Configurable octave, density, syncopation, rests, and octave jumps
+- **↻ Regenerate Bass** button lets you swap bass lines independently without touching the chords
 - Regenerates automatically whenever the chord progression changes
 
 **Timeline View**
 - Combined piano-roll-style visualization showing chords (purple) and bass (blue) on a single responsive canvas
-- Each note displays as a duration bar so you can see exactly how long it's held
-- Hover over any note for details — chord name, voice, voicing type, inversion, and beat duration
+- Each note displays as a duration bar spanning its full held length, with connecting lines showing voice movement between chords
+- **Hover** any chord note to highlight that voice's path across the full progression — all other voices dim
+- **Click** to lock the highlight; click again, click empty space, or press Escape to clear
+- Hover tooltip shows chord name, voice number, voicing type, inversion, and beat duration
 - Fully scales to your browser window — no scrolling required
 
 **Playback**
 - In-browser audio preview using sine wave oscillators with reverb
 - Full ADSR envelope controls (Attack, Decay, Sustain, Release) for the chord layer
 - **Sustain Repeated Notes** — when a pitch carries over between chords, it holds as one continuous tone rather than restarting (on by default)
-- BPM slider (20–120, default 60) with optional looping
-- A playhead cursor sweeps across the timeline in sync with playback
+- BPM slider (20–120, default 60) with optional loop toggle
+- Playhead cursor sweeps across the timeline in sync with playback
+- Switching mood or generating a new progression automatically stops playback
 
 **Export**
 - **Copy to Clipboard** — full text export with chord names, voicings, inversions, note names, beat durations, and the complete bass line
@@ -51,10 +56,11 @@ Ambient Composer generates a complete harmonic foundation — chords with intell
 
 1. Open the [tool](https://craigdamlo.github.io/Ambient-Composer/ambientchord.html) in any modern browser
 2. Pick a **Tempo Feel** and **Tone** to set the overall character, or skip straight to the individual settings
-3. Hit **↻ Generate New** to create a progression
-4. Dial in your bass line style and settings
-5. Preview with **▶ Play** — adjust BPM and ADSR envelope to taste
-6. Export via **📋 Copy to Clipboard** or **⬇ Download MIDI**
+3. Select a key — highlighted keys are recommended for the current tone
+4. Hit **↻ Generate New** to create a progression
+5. Dial in your bass line — use **↻ Regenerate Bass** to swap styles without changing the chords
+6. Preview with **▶ Play** — adjust BPM and ADSR envelope to taste; click voices on the timeline to trace how they move
+7. Export via **📋 Copy to Clipboard** or **⬇ Download MIDI**
 
 ---
 
