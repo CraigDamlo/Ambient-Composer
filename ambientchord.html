@@ -715,19 +715,33 @@
                 for (let i = 0; i < voices; i++) totalDist += Math.abs(first[i] - last[i]);
                 const avgDist = (totalDist / voices).toFixed(1);
                 const quality = document.getElementById('loopQuality');
+                let label, bg;
                 if (avgDist < 3) {
-                    quality.innerHTML = `<strong>Loop Quality: Excellent ✓</strong><br>Average distance: ${avgDist} semitones (very smooth loop)`;
-                    quality.style.background = 'rgba(34, 197, 94, 0.2)';
+                    label = 'Excellent ✓'; bg = 'rgba(34, 197, 94, 0.2)';
                 } else if (avgDist < 6) {
-                    quality.innerHTML = `<strong>Loop Quality: Good</strong><br>Average distance: ${avgDist} semitones (smooth loop)`;
-                    quality.style.background = 'rgba(234, 179, 8, 0.2)';
+                    label = 'Good'; bg = 'rgba(234, 179, 8, 0.2)';
                 } else {
-                    quality.innerHTML = `<strong>Loop Quality: Fair</strong><br>Average distance: ${avgDist} semitones (moderate jump)`;
-                    quality.style.background = 'rgba(239, 68, 68, 0.2)';
+                    label = 'Fair'; bg = 'rgba(239, 68, 68, 0.2)';
                 }
+                quality.style.background = bg;
+                const scaleHtml = [
+                    { label: 'Excellent', color: 'rgba(34,197,94,0.9)',  active: avgDist < 3 },
+                    { label: 'Good',      color: 'rgba(234,179,8,0.9)', active: avgDist >= 3 && avgDist < 6 },
+                    { label: 'Fair',      color: 'rgba(239,68,68,0.9)',  active: avgDist >= 6 },
+                ].map((s, i) =>
+                    `${i > 0 ? '<span style="color:rgba(233,213,255,0.3);"> &nbsp;|&nbsp; </span>' : ''}` +
+                    `<span style="color:${s.color}; ${s.active ? 'font-weight:700; text-decoration:underline;' : 'opacity:0.5;'}">${s.label}</span>`
+                ).join('');
+                quality.innerHTML = `
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+                        <strong>Loop Quality: ${label}</strong>
+                        <span style="font-size:0.75rem; letter-spacing:0.05em;">${scaleHtml}</span>
+                    </div>
+                    <div style="font-size:0.875rem; color:rgba(233,213,255,0.7);">Average voice movement: ${avgDist} semitones</div>
+                `;
                 const details = [];
                 for (let i = 0; i < voices; i++) details.push(`Voice ${i + 1}: ${Math.abs(first[i] - last[i])} semitones`);
-                quality.innerHTML += `<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">${details.join(' • ')}</span>`;
+                quality.innerHTML += `<span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">${details.join(' • ')}</span>`;
             } else if (progression.length > 0) {
                 const totalBeats = progression.reduce((s, c) => s + c.duration, 0);
                 const quality = document.getElementById('loopQuality');
