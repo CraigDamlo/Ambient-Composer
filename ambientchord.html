@@ -343,7 +343,8 @@
     <script>
         let progression = [];
         let bassLine = [];
-        let timelineHitTargets = []; // { x, y, label, isBass }
+        let timelineHitTargets = [];
+        let highlightedVoice = null; // null = none, number = locked voice index, 'hover:N' = hover preview // { x, y, label, isBass }
         
         const chordLibrary = {
             major: {
@@ -698,12 +699,10 @@
                 <div class="chord-item">
                     <div>
                         <span class="chord-name">${c.name}</span>
-                        <span style="color: #d8b4fe; margin-left: 1rem;">${c.notes.join(' - ')}</span>
-                        <span style="color: rgba(233,213,255,0.6); font-size: 0.875rem; margin-left: 0.75rem;">
-                            (${c.voicing}${useInv ? ', ' + c.inversion + ' inv' : ''})
-                        </span>
+                        <span style="color: #d8b4fe; margin-left: 1rem;">${c.notes.join(' · ')}</span>
+                        ${useInv ? `<span style="color: rgba(233,213,255,0.45); font-size: 0.8rem; margin-left: 0.75rem;">${c.voicing}, ${c.inversion} inv</span>` : ''}
                     </div>
-                    <div style="font-family: monospace; color: #d8b4fe;">${c.duration} beats</div>
+                    <div style="font-family: monospace; color: rgba(216,180,254,0.7); font-size:0.875rem; white-space:nowrap;">${c.duration} beat${c.duration !== 1 ? 's' : ''}</div>
                 </div>
             `).join('');
             
@@ -810,10 +809,19 @@
             const dotR = Math.max(3, Math.min(5, rowH / 4));
             timelineHitTargets = [];
 
+            // Determine active voice for highlighting
+            const activeVoice = highlightedVoice !== null
+                ? (typeof highlightedVoice === 'number' ? highlightedVoice : parseInt(highlightedVoice.toString().replace('hover:', '')))
+                : null;
+            const dimming = activeVoice !== null;
+
             // First pass: sustain bars (drawn under everything)
             positions.forEach(pos => {
-                pos.notes.forEach(note => {
-                    ctx.fillStyle = 'rgba(139, 92, 246, 0.12)';
+                pos.notes.forEach((note, voiceIdx) => {
+                    const isActive = !dimming || voiceIdx === activeVoice;
+                    ctx.fillStyle = isActive
+                        ? 'rgba(139, 92, 246, 0.18)'
+                        : 'rgba(139, 92, 246, 0.04)';
                     ctx.beginPath();
                     ctx.roundRect
                         ? ctx.roundRect(pos.x, note.y - dotR, pos.xEnd - pos.x, dotR * 2, dotR)
@@ -822,17 +830,20 @@
                 });
             });
 
-            // Second pass: connecting lines between chord changes (start of next to end of prev at same voice)
+            // Second pass: connecting lines
             ctx.lineWidth = 1.5;
             for (let i = 0; i < positions.length - 1; i++) {
                 const curr = positions[i], next = positions[i + 1];
                 const voices = Math.min(curr.notes.length, next.notes.length);
                 for (let v = 0; v < voices; v++) {
                     if (Math.abs(curr.notes[v].y - next.notes[v].y) > 1) {
+                        const isActive = !dimming || v === activeVoice;
+                        const alpha = isActive ? '0.8' : '0.1';
                         const grad = ctx.createLinearGradient(curr.xEnd, curr.notes[v].y, next.x, next.notes[v].y);
-                        grad.addColorStop(0, 'rgba(168, 85, 247, 0.6)');
-                        grad.addColorStop(1, 'rgba(139, 92, 246, 0.6)');
+                        grad.addColorStop(0, `rgba(168, 85, 247, ${alpha})`);
+                        grad.addColorStop(1, `rgba(139, 92, 246, ${alpha})`);
                         ctx.strokeStyle = grad;
+                        ctx.lineWidth = isActive && dimming ? 2.5 : 1.5;
                         ctx.beginPath();
                         ctx.moveTo(curr.xEnd, curr.notes[v].y);
                         ctx.lineTo(next.x, next.notes[v].y);
@@ -845,17 +856,19 @@
             positions.forEach((pos, chordIdx) => {
                 const chord = pos.chord;
                 pos.notes.forEach((note, voiceIdx) => {
-                    // Start dot
-                    ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
+                    const isActive = !dimming || voiceIdx === activeVoice;
+                    const dotAlpha = isActive ? 1 : 0.15;
+                    const glowAlpha = isActive ? (dimming ? 0.5 : 0.3) : 0.05;
+
+                    ctx.fillStyle = `rgba(168, 85, 247, ${glowAlpha})`;
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR + 3, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.fillStyle = '#8b5cf6';
+                    ctx.fillStyle = `rgba(139, 92, 246, ${dotAlpha})`;
                     ctx.beginPath();
                     ctx.arc(pos.x, note.y, dotR, 0, Math.PI * 2);
                     ctx.fill();
-                    // End cap dot
-                    ctx.fillStyle = 'rgba(168, 85, 247, 0.18)';
+                    ctx.fillStyle = `rgba(168, 85, 247, ${isActive ? 0.25 : 0.05})`;
                     ctx.beginPath();
                     ctx.arc(pos.xEnd, note.y, dotR + 1, 0, Math.PI * 2);
                     ctx.fill();
@@ -863,6 +876,7 @@
                     timelineHitTargets.push({
                         x: pos.x, y: note.y, r: dotR + 6,
                         isBass: false,
+                        voiceIdx,
                         label: `${chord.name}  •  ${midiToNote(note.midi)}\nVoice ${voiceIdx + 1}  •  ${chord.voicing}, ${chord.inversion} inv\n${chord.duration} beats`
                     });
                 });
@@ -870,6 +884,7 @@
 
             // ── Bass line notes ──
             if (bassLine.length > 0) {
+                const bassDim = dimming; // dim bass when a chord voice is highlighted
                 const bassTotalBeats = bassLine.reduce((s, n) => s + n.duration, 0);
                 let bx = padding;
 
@@ -878,7 +893,7 @@
                     const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
                     if (!note.rest) {
                         const by = toY(note.midi);
-                        ctx.fillStyle = 'rgba(14, 165, 233, 0.12)';
+                        ctx.fillStyle = bassDim ? 'rgba(14, 165, 233, 0.04)' : 'rgba(14, 165, 233, 0.12)';
                         ctx.beginPath();
                         ctx.roundRect
                             ? ctx.roundRect(bx, by - dotR, bw, dotR * 2, dotR)
@@ -900,9 +915,10 @@
                 for (let i = 0; i < bassSegments.length - 1; i++) {
                     const curr = bassSegments[i], next = bassSegments[i + 1];
                     if (Math.abs(curr.y - next.y) > 1) {
+                        const alpha = bassDim ? '0.1' : '0.6';
                         const grad = ctx.createLinearGradient(curr.xEnd, curr.y, next.x, next.y);
-                        grad.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
-                        grad.addColorStop(1, 'rgba(14, 165, 233, 0.6)');
+                        grad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
+                        grad.addColorStop(1, `rgba(14, 165, 233, ${alpha})`);
                         ctx.strokeStyle = grad;
                         ctx.beginPath();
                         ctx.moveTo(curr.xEnd, curr.y);
@@ -917,19 +933,20 @@
                     const bw = (note.duration / bassTotalBeats) * (width - padding * 2);
                     if (!note.rest) {
                         const by = toY(note.midi);
+                        const bAlpha = bassDim ? 0.15 : 1;
 
                         // Start dot
-                        ctx.fillStyle = 'rgba(14, 165, 233, 0.3)';
+                        ctx.fillStyle = `rgba(14, 165, 233, ${bassDim ? 0.05 : 0.3})`;
                         ctx.beginPath();
                         ctx.arc(bx, by, dotR + 3, 0, Math.PI * 2);
                         ctx.fill();
-                        ctx.fillStyle = '#38bdf8';
+                        ctx.fillStyle = `rgba(56, 189, 248, ${bAlpha})`;
                         ctx.beginPath();
                         ctx.arc(bx, by, dotR, 0, Math.PI * 2);
                         ctx.fill();
 
                         // End cap dot
-                        ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+                        ctx.fillStyle = `rgba(14, 165, 233, ${bassDim ? 0.05 : 0.18})`;
                         ctx.beginPath();
                         ctx.arc(bx + bw, by, dotR + 1, 0, Math.PI * 2);
                         ctx.fill();
@@ -1134,52 +1151,97 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
         (function() {
             const tooltip = document.getElementById('timeline-tooltip');
             const canvas = document.getElementById('canvas');
+            let lockedVoice = null;
 
-            canvas.addEventListener('mousemove', e => {
+            function getHit(e) {
                 const rect = canvas.getBoundingClientRect();
-                // Scale mouse coords from CSS pixels to canvas pixels
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
                 const mx = (e.clientX - rect.left) * scaleX;
                 const my = (e.clientY - rect.top) * scaleY;
-
-                let hit = null;
-                let best = Infinity;
+                let hit = null, best = Infinity;
                 timelineHitTargets.forEach(t => {
                     const dist = Math.sqrt((mx - t.x) ** 2 + (my - t.y) ** 2);
                     if (dist < t.r && dist < best) { best = dist; hit = t; }
                 });
+                return hit;
+            }
 
+            function showTooltip(hit, e, locked) {
+                const lines = hit.label.split('\n');
+                tooltip.innerHTML = lines.map((l, i) => {
+                    const color = i === 0
+                        ? (hit.isBass ? '#7dd3fc' : '#d8b4fe')
+                        : 'rgba(233,213,255,0.65)';
+                    return `<span style="color:${color}">${l}</span>`;
+                }).join('<br>');
+                if (!hit.isBass) {
+                    tooltip.innerHTML += `<br><span style="color:rgba(233,213,255,0.4); font-size:0.75em;">${locked ? 'Click to clear' : 'Click to lock voice'}</span>`;
+                }
+                tooltip.style.borderColor = hit.isBass ? 'rgba(56,189,248,0.6)' : 'rgba(168,85,247,0.6)';
+                const tw = 180, th = 80;
+                let tx = e.clientX + 14, ty = e.clientY - 10;
+                if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
+                if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 10;
+                tooltip.style.left = tx + 'px';
+                tooltip.style.top = ty + 'px';
+                tooltip.classList.add('visible');
+                canvas.style.cursor = 'pointer';
+            }
+
+            canvas.addEventListener('mousemove', e => {
+                const hit = getHit(e);
                 if (hit) {
-                    const lines = hit.label.split('\n');
-                    tooltip.innerHTML = lines.map((l, i) => {
-                        const color = i === 0
-                            ? (hit.isBass ? '#7dd3fc' : '#d8b4fe')
-                            : 'rgba(233,213,255,0.65)';
-                        return `<span style="color:${color}">${l}</span>`;
-                    }).join('<br>');
-                    tooltip.style.borderColor = hit.isBass
-                        ? 'rgba(56,189,248,0.6)'
-                        : 'rgba(168,85,247,0.6)';
-
-                    // Position tooltip — keep it inside viewport
-                    const tw = 180, th = 70;
-                    let tx = e.clientX + 14;
-                    let ty = e.clientY - 10;
-                    if (tx + tw > window.innerWidth - 8) tx = e.clientX - tw - 14;
-                    if (ty + th > window.innerHeight - 8) ty = e.clientY - th - 10;
-                    tooltip.style.left = tx + 'px';
-                    tooltip.style.top = ty + 'px';
-                    tooltip.classList.add('visible');
-                    canvas.style.cursor = 'pointer';
+                    if (lockedVoice === null && !hit.isBass) {
+                        highlightedVoice = hit.voiceIdx;
+                        drawTimeline();
+                    }
+                    showTooltip(hit, e, lockedVoice !== null && !hit.isBass && hit.voiceIdx === lockedVoice);
                 } else {
                     tooltip.classList.remove('visible');
-                    canvas.style.cursor = 'crosshair';
+                    canvas.style.cursor = lockedVoice !== null ? 'pointer' : 'crosshair';
+                    if (lockedVoice === null) {
+                        highlightedVoice = null;
+                        drawTimeline();
+                    }
+                }
+            });
+
+            canvas.addEventListener('click', e => {
+                const hit = getHit(e);
+                if (hit && !hit.isBass) {
+                    if (lockedVoice === hit.voiceIdx) {
+                        // Unlock
+                        lockedVoice = null;
+                        highlightedVoice = null;
+                    } else {
+                        // Lock this voice
+                        lockedVoice = hit.voiceIdx;
+                        highlightedVoice = hit.voiceIdx;
+                    }
+                    drawTimeline();
+                } else if (!hit && lockedVoice !== null) {
+                    // Click empty area — clear lock
+                    lockedVoice = null;
+                    highlightedVoice = null;
+                    drawTimeline();
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && lockedVoice !== null) {
+                    lockedVoice = null;
+                    highlightedVoice = null;
+                    drawTimeline();
                 }
             });
 
             canvas.addEventListener('mouseleave', () => {
                 tooltip.classList.remove('visible');
+                if (lockedVoice === null) {
+                    highlightedVoice = null;
+                    drawTimeline();
+                }
             });
         })();
 
@@ -1451,6 +1513,7 @@ ${bassLine.map((n, i) => n.rest ? `${i + 1}. REST - ${n.duration} beats` : `${i 
         const _origGenerate = generateProgression;
         generateProgression = function() {
             if (isPlaying) stopPlayback();
+            highlightedVoice = null;
             _origGenerate();
         };
     </script>
