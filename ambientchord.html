@@ -438,6 +438,7 @@
             ['slow','mid','fast'].forEach(t =>
                 document.getElementById('tempo' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tempo)
             );
+            if (isPlaying) stopPlayback();
             applyMoodPresets();
         }
 
@@ -446,6 +447,7 @@
             ['dark','neutral','bright'].forEach(t =>
                 document.getElementById('tone' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tone)
             );
+            if (isPlaying) stopPlayback();
             applyMoodPresets();
         }
 
@@ -726,6 +728,11 @@
                 const details = [];
                 for (let i = 0; i < voices; i++) details.push(`Voice ${i + 1}: ${Math.abs(first[i] - last[i])} semitones`);
                 quality.innerHTML += `<br><span style="font-size: 0.875rem; color: rgba(233, 213, 255, 0.7);">${details.join(' • ')}</span>`;
+            } else if (progression.length > 0) {
+                const totalBeats = progression.reduce((s, c) => s + c.duration, 0);
+                const quality = document.getElementById('loopQuality');
+                quality.innerHTML = `<strong>${progression.length} chords</strong> &nbsp;•&nbsp; ${totalBeats} beats total`;
+                quality.style.background = 'rgba(168, 85, 247, 0.1)';
             } else {
                 document.getElementById('loopQuality').innerHTML = '';
             }
